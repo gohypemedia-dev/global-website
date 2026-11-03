@@ -1,0 +1,237 @@
+{
+  "intro": [
+    {
+      "kind": "p",
+      "text": "Welcome to Global Devices (A Unit of Rail Anchor India Pvt Ltd)"
+    },
+    {
+      "kind": "p",
+      "text": "Terms of Service for indiaglobalgroup.com"
+    },
+    {
+      "kind": "p",
+      "text": "Welcome to indiaglobalgroup.com, the official website of Global Devices (A Unit of Rail Anchor India Pvt Ltd) (Referred to as “Global Devices,” “we,” or “our”). By accessing or using this website, you agree to comply with and be bound by these Terms of Service. Please read them carefully, as they govern your use of our website and services."
+    }
+  ],
+  "sections": [
+    {
+      "id": "acceptance-of-terms",
+      "title": "Acceptance of Terms",
+      "blocks": [
+        {
+          "kind": "p",
+          "text": "By accessing or using indiaglobalgroup.com, you confirm that you accept these Terms of Service and agree to be bound by them. If you do not agree to these terms, please refrain from using our website."
+        }
+      ]
+    },
+    {
+      "id": "use-of-the-website",
+      "title": "Use of the Website",
+      "blocks": [
+        {
+          "kind": "h3",
+          "text": "1. Purpose:"
+        },
+        {
+          "kind": "list",
+          "items": [
+            "This website is designed to provide information about Global Devices products, services, and business activities."
+          ]
+        },
+        {
+          "kind": "h3",
+          "text": "2. Prohibited Activities:"
+        },
+        {
+          "kind": "p",
+          "text": "When using our website, you agree not to:"
+        },
+        {
+          "kind": "list",
+          "items": [
+            "Violate any applicable laws or regulations.",
+            "Use the website for fraudulent, harmful, or malicious purposes.",
+            "Attempt to disrupt the website’s operation, including introducing viruses or harmful technology.",
+            "Access or scrape data from the website using automated systems without prior written consent from Global Devices."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "intellectual-property-rights",
+      "title": "Intellectual Property Rights",
+      "blocks": [
+        {
+          "kind": "h3",
+          "text": "1. Ownership:"
+        },
+        {
+          "kind": "list",
+          "items": [
+            "All content on indiaglobalgroup.com, including text, images, graphics, logos, videos, and software, is the property of Global Devices or its licensors and is protected under copyright, trademark, and other intellectual property laws."
+          ]
+        },
+        {
+          "kind": "h3",
+          "text": "2. Restrictions:"
+        },
+        {
+          "kind": "list",
+          "items": [
+            "You may not copy, reproduce, distribute, or create derivative works of the website’s content without express written permission from Global Devices."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "user-generated-content",
+      "title": "User-Generated Content",
+      "blocks": [
+        {
+          "kind": "h3",
+          "text": "1. Responsibility for Content:"
+        },
+        {
+          "kind": "list",
+          "items": [
+            "If you submit content, feedback, or other materials to indiaglobalgroup.com, you agree that such submissions are non-confidential and do not violate any laws or third-party rights."
+          ]
+        },
+        {
+          "kind": "h3",
+          "text": "2. Grant of Rights:"
+        },
+        {
+          "kind": "list",
+          "items": [
+            "By submitting content, you grant Global Devices a non-exclusive, worldwide, royalty-free license to use, reproduce, and distribute the content for legitimate purposes."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "third-party-links",
+      "title": "Third-Party Links",
+      "blocks": [
+        {
+          "kind": "p",
+          "text": "This website may include links to external websites for your convenience. Global Devices is not responsible for the content, privacy policies, or practices of third-party websites. Accessing third-party links is at your own risk."
+        }
+      ]
+    },
+    {
+      "id": "disclaimer-of-warranties",
+      "title": "Disclaimer of Warranties",
+      "blocks": [
+        {
+          "kind": "h3",
+          "text": "1. Website Availability:"
+        },
+        {
+          "kind": "list",
+          "items": [
+            "indiaglobalgroup.com is provided “as is” and “as available.” We do not guarantee uninterrupted access or that the website will be free of errors or harmful components."
+          ]
+        },
+        {
+          "kind": "h3",
+          "text": "2. Information Accuracy:"
+        },
+        {
+          "kind": "list",
+          "items": [
+            "While we make every effort to ensure the accuracy of the information provided, Global Devices does not warrant the completeness, reliability, or suitability of the website content for any purpose."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "limitation-of-liability",
+      "title": "Limitation of Liability",
+      "blocks": [
+        {
+          "kind": "p",
+          "text": "To the fullest extent permitted by law, Global Devices will not be liable for any direct, indirect, incidental, or consequential damages resulting from:"
+        },
+        {
+          "kind": "list",
+          "items": [
+            "Your use or inability to use the website.",
+            "Unauthorized access to your data.",
+            "Errors or inaccuracies in website content."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "indemnification",
+      "title": "Indemnification",
+      "blocks": [
+        {
+          "kind": "p",
+          "text": "You agree to indemnify and hold harmless Global Devices, its affiliates, and employees from and against any claims, damages, or liabilities arising from your violation of these Terms of Service or your use of the website."
+        }
+      ]
+    },
+    {
+      "id": "privacy",
+      "title": "Privacy",
+      "blocks": [
+        {
+          "kind": "p",
+          "text": "Your use of indiaglobalgroup.com is also governed by our Privacy Policy, which explains how we collect, use, and safeguard your information."
+        }
+      ]
+    },
+    {
+      "id": "changes-to-the-terms-of-service",
+      "title": "Changes to the Terms of Service",
+      "blocks": [
+        {
+          "kind": "p",
+          "text": "Global Devices reserves the right to modify or update these Terms of Service at any time. Any changes will be posted on this page with the updated date. Your continued use of the website constitutes acceptance of the revised terms."
+        }
+      ]
+    },
+    {
+      "id": "governing-law",
+      "title": "Governing Law",
+      "blocks": [
+        {
+          "kind": "p",
+          "text": "These Terms of Service are governed by and construed in accordance with the laws of India. Any disputes arising under these terms will be subject to the exclusive jurisdiction of the courts in Himachal Pradesh"
+        }
+      ]
+    },
+    {
+      "id": "contact-us",
+      "title": "Contact Us",
+      "blocks": [
+        {
+          "kind": "p",
+          "text": "For questions or concerns, please contact:"
+        },
+        {
+          "kind": "p",
+          "text": "Operations Department"
+        },
+        {
+          "kind": "p",
+          "text": "Global Devices (A Unit of Rail Anchor India Pvt Ltd)"
+        },
+        {
+          "kind": "p",
+          "text": "Village Ogli, Nahan Road, Kala-amb,"
+        },
+        {
+          "kind": "p",
+          "text": "Dist. Sirmour, Himachal Pradesh - 173030"
+        },
+        {
+          "kind": "p",
+          "text": "Email: operations@indiaglobalgroup.com"
+        }
+      ]
+    }
+  ]
+}

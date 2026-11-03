@@ -5,6 +5,7 @@ import Link from "next/link";
 import AramcoHeader from "../components/AramcoHeader";
 import NewsletterSection from "../components/NewsletterSection";
 import Footer from "../components/Footer";
+import AboutFaqs from "../components/AboutFaqs";
 import { LanguageProvider, useLanguage } from "../context/LanguageContext";
 
 function AboutUsContent() {
@@ -698,6 +699,8 @@ function AboutUsContent() {
 
       {/* 9. Newsletter Section */}
       <NewsletterSection />
+
+      <AboutFaqs />
 
       {/* Footer */}
       <Footer />

@@ -56,7 +56,7 @@ export default function NewsletterSection() {
 
   return (
     <section className="w-full py-12 sm:py-16 lg:py-20 bg-gradient-to-b from-[#f8f9fb] to-white text-gray-900 relative select-none border-t border-gray-200/80">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Modern Fresh Newsletter Card with Soft Red/Slate Accents */}
         <div className="relative w-full rounded-2xl sm:rounded-3xl bg-white border border-gray-200/90 shadow-[0_15px_45px_rgba(0,0,0,0.06)] p-7 sm:p-12 lg:p-14 overflow-hidden">
@@ -66,22 +66,22 @@ export default function NewsletterSection() {
           <div className="absolute -bottom-20 -left-20 w-72 h-72 bg-[#ff3131]/[0.06] rounded-full blur-[80px] pointer-events-none" />
           <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[radial-gradient(#ff3131_1px,transparent_1px)] [background-size:24px_24px]" />
 
-          <div className="relative z-10 max-w-3xl">
+          <div className="relative z-10 w-full">
             
             {/* Main Headline */}
-            <h3 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-950 tracking-tight leading-[1.2] mb-6 sm:mb-7 font-sans">
+            <h3 className="text-xl sm:text-2xl lg:text-[28px] xl:text-[32px] font-bold text-gray-950 tracking-tight leading-snug mb-6 sm:mb-7 font-sans">
               {lang === "hi" ? (
                 <>
-                  हमारी नवीनतम इंजीनियरिंग एवं <br className="hidden sm:block" />
+                  हमारे नवीनतम उत्पादों और<br />
                   <span className="text-transparent bg-clip-text bg-gradient-to-r from-gray-950 via-gray-800 to-[#ff3131]">
-                    सुरक्षा जानकारियों से जुड़े रहें
+                    तकनीकी अपडेट से प्रेरित रहें
                   </span>
                 </>
               ) : (
                 <>
-                  Stay Inspired with Our <br className="hidden sm:block" />
+                  Stay inspired with our<br />
                   <span className="text-transparent bg-clip-text bg-gradient-to-r from-gray-950 via-gray-800 to-[#ff3131]">
-                    Engineering & Technical Updates
+                    Latest Product Offerings and technical updates
                   </span>
                 </>
               )}

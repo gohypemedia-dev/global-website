@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, Orbitron, Rajdhani } from "next/font/google";
 import "./globals.css";
 import SmoothScroll from "./components/SmoothScroll";
+import CookieSettings from "./components/CookieSettings";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -26,8 +27,8 @@ const rajdhani = Rajdhani({
 });
 
 export const metadata: Metadata = {
-  title: "GLOBAL. | Engineering for Railway Safety",
-  description: "Specialised infrastructure safety solutions: Railway Barrier Systems and Digital Earth Leakage Detectors.",
+  title: "Global - Engineering for Railway Safety",
+  description: "Making Railway crossings safer with our RDSO Approved Electric Lifting Barriers (ELB) and other ancillary products such as Gearboxes, Locking Mechanisms and GI Booms.",
 };
 
 export default function RootLayout({
@@ -43,6 +44,7 @@ export default function RootLayout({
     >
       <body suppressHydrationWarning className="min-h-full flex flex-col bg-black text-white">
         <SmoothScroll>{children}</SmoothScroll>
+        <CookieSettings />
       </body>
     </html>
   );

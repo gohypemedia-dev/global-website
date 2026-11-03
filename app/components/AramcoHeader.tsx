@@ -9,7 +9,7 @@ const NAV_ITEMS: { id: string; type: "link" | "drawer"; href?: string }[] = [
   { id: "capability", type: "drawer" },
   { id: "about", type: "link", href: "/about" },
   { id: "support", type: "drawer" },
-  { id: "contact", type: "drawer" },
+  { id: "contact", type: "link", href: "/contact" },
 ];
 
 interface SubmenuItem {
@@ -81,9 +81,9 @@ const DRAWER_DATA_EN: Record<string, DrawerCategory> = {
   support: {
     title: "Downloads",
     items: [
-      { id: "datasheets", name: "Product Datasheets", href: "/support/datasheets", hasSubmenu: false },
-      { id: "specifications", name: "Technical Specifications", href: "/support/specifications", hasSubmenu: false },
-      { id: "installation-guides", name: "Installation & Wiring Guides", href: "/support/installation-guides", hasSubmenu: false },
+      { id: "datasheets", name: "Electric Lifting Barrier (ELB)", href: "/downloads/electric-lifting-barrier", hasSubmenu: false },
+      { id: "specifications", name: "Earth Leakage Detector (ELD)", href: "/downloads/earth-leakage-detector", hasSubmenu: false },
+      { id: "installation-guides", name: "Company Documents", href: "/downloads/company-documents", hasSubmenu: false },
     ],
   },
 };
@@ -138,18 +138,19 @@ const DRAWER_DATA_HI: Record<string, DrawerCategory> = {
   support: {
     title: "डाउनलोड",
     items: [
-      { id: "datasheets", name: "उत्पाद डेटाशीट", href: "/support/datasheets", hasSubmenu: false },
-      { id: "specifications", name: "तकनीकी विनिर्देश", href: "/support/specifications", hasSubmenu: false },
-      { id: "installation-guides", name: "इंस्टॉलेशन एवं वायरिंग गाइड", href: "/support/installation-guides", hasSubmenu: false },
+      { id: "datasheets", name: "Electric Lifting Barrier (ELB)", href: "/downloads/electric-lifting-barrier", hasSubmenu: false },
+      { id: "specifications", name: "Earth Leakage Detector (ELD)", href: "/downloads/earth-leakage-detector", hasSubmenu: false },
+      { id: "installation-guides", name: "Company Documents", href: "/downloads/company-documents", hasSubmenu: false },
     ],
   },
 };
 
 interface AramcoHeaderProps {
   theme?: "dark" | "light";
+  solid?: boolean;
 }
 
-export default function AramcoHeader({ theme = "dark" }: AramcoHeaderProps) {
+export default function AramcoHeader({ theme = "dark", solid = false }: AramcoHeaderProps) {
   const { lang, setLang, t } = useLanguage();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeDrawerId, setActiveDrawerId] = useState<string | null>(null);
@@ -254,6 +255,8 @@ export default function AramcoHeader({ theme = "dark" }: AramcoHeaderProps) {
             ? isScrolled || activeDrawerId
               ? "bg-white/95 backdrop-blur-md shadow-md text-gray-900 border-b border-gray-200"
               : "bg-white/95 backdrop-blur-md text-gray-900 border-b border-gray-200/80 shadow-sm"
+            : solid
+              ? "bg-[#111113] text-white border-b border-transparent"
             : isScrolled || activeDrawerId
               ? "bg-[#111113]/90 backdrop-blur-md shadow-2xl text-white border-b border-white/10"
               : "bg-gradient-to-b from-black/75 via-black/25 to-transparent text-white border-b border-transparent"
@@ -304,7 +307,9 @@ export default function AramcoHeader({ theme = "dark" }: AramcoHeaderProps) {
 
             </div>
 
-            {/* Central phone number */}
+            <div className="flex flex-wrap items-center justify-end gap-x-2 text-[10px] sm:text-[13px]">
+            <a href="mailto:info@indiaglobalgroup.com" className="hover:text-[#ff3131]">info@indiaglobalgroup.com</a>
+            <span aria-hidden="true">|</span>
             <a
               href="tel:+916200264002"
               className={`inline-flex items-center space-x-2 transition-colors duration-200 ${
@@ -317,6 +322,7 @@ export default function AramcoHeader({ theme = "dark" }: AramcoHeaderProps) {
               </svg>
               <span className="font-semibold tracking-wide tabular-nums">62002-64002</span>
             </a>
+            </div>
 
           </div>
         </div>
@@ -559,7 +565,7 @@ export default function AramcoHeader({ theme = "dark" }: AramcoHeaderProps) {
                 <span>{lang === "hi" ? "कर्मचारी लॉगिन (Login)" : "Employee Login"}</span>
               </a>
               <a
-                href="/contact/engineering-team"
+                href="/contact"
                 onClick={() => setIsMobileMenuOpen(false)}
                 className="block w-full py-2.5 rounded-none bg-[#ff3131] hover:bg-[#d62828] text-white text-center text-xs font-bold uppercase tracking-wider transition-all shadow-md"
               >

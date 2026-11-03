@@ -1,51 +1,45 @@
 "use client";
 
 import React from "react";
+import { CookiePreferencesButton } from "./CookieSettings";
 import { useLanguage } from "../context/LanguageContext";
-import GlobalLogo from "./GlobalLogo";
+import Link from "next/link";
+import { MSME_DECLARATION } from "../../lib/company-content";
 
 const PRODUCTS_LINKS_EN = [
   { name: "Electric Lifting Barrier (ELB)", href: "/products/railway-barrier" },
-  { name: "Galvanised Iron (GI) Boom", href: "/products/gi-boom" },
-  { name: "Motorised Locking", href: "/products/motorised-locking" },
   { name: "Earth Leakage Detector (ELD)", href: "/products/earth-leakage" },
+  { name: "Ancillary Items", href: "/products/ancillary-items" },
 ];
-
-const COMPANY_LINKS_EN = [
-  { name: "About Us", href: "/about" },
-  { name: "Careers", href: "/careers" },
-  { name: "Contact Us", href: "/contact" },
-  { name: "Request a Quote", href: "/contact/quote-req" },
-];
-
-const LEGAL_SUPPORT_LINKS_EN = [
-  { name: "Technical Resources", href: "/support" },
-  { name: "Product Datasheets", href: "/support/datasheets" },
-  { name: "Installation Guides", href: "/support/installation-guides" },
-  { name: "Talk to Engineering", href: "/contact/engineering-team" },
-];
-
 const PRODUCTS_LINKS_HI = [
   { name: "इलेक्ट्रिक लिफ्टिंग बैरियर (ELB)", href: "/products/railway-barrier" },
-  { name: "गैल्वनाइज़्ड आयरन (GI) बूम", href: "/products/gi-boom" },
-  { name: "मोटराइज़्ड लॉकिंग", href: "/products/motorised-locking" },
   { name: "अर्थ लीकेज डिटेक्टर (ELD)", href: "/products/earth-leakage" },
+  { name: "सहायक उपकरण", href: "/products/ancillary-items" },
 ];
-
+const COMPANY_LINKS_EN = [
+  { name: "About Us", href: "/about" },
+  { name: "Contact Us", href: "/contact" },
+  { name: "Downloads", href: "/downloads" },
+  { name: "MSME Declaration", href: "/msme-declaration" },
+];
 const COMPANY_LINKS_HI = [
   { name: "हमारे बारे में", href: "/about" },
-  { name: "करियर", href: "/careers" },
   { name: "संपर्क करें", href: "/contact" },
-  { name: "कोटेशन प्राप्त करें", href: "/contact/quote-req" },
+  { name: "डाउनलोड", href: "/downloads" },
+  { name: "MSME घोषणा", href: "/msme-declaration" },
 ];
-
+const LEGAL_SUPPORT_LINKS_EN = [
+  { name: "Login", href: "/login" },
+  { name: "Scan QR Code", href: "/scan-qr-code" },
+  { name: "Privacy Policy", href: "/privacy-policy" },
+  { name: "Terms of Use", href: "/terms-of-use" },
+];
 const LEGAL_SUPPORT_LINKS_HI = [
-  { name: "तकनीकी संसाधन", href: "/support" },
-  { name: "उत्पाद डेटाशीट", href: "/support/datasheets" },
-  { name: "स्थापना गाइड", href: "/support/installation-guides" },
-  { name: "इंजीनियरिंग से बात करें", href: "/contact/engineering-team" },
+  { name: "लॉगिन", href: "/login" },
+  { name: "QR कोड स्कैन करें", href: "/scan-qr-code" },
+  { name: "गोपनीयता नीति", href: "/privacy-policy" },
+  { name: "उपयोग की शर्तें", href: "/terms-of-use" },
 ];
-
 export default function Footer() {
   const { lang, t } = useLanguage();
 
@@ -67,30 +61,32 @@ export default function Footer() {
         {/* Brand Summary Banner */}
         <div className="mb-12 pb-10 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
-            <GlobalLogo theme="light" size="lg" />
-            <div className="text-xs sm:text-sm font-semibold text-[#ff3131] tracking-wider uppercase mt-2">
+            <div className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight font-sans">
+              GLOBAL DEVICES
+            </div>
+            <div className="text-xs sm:text-sm font-semibold text-[#ff3131] tracking-wider uppercase mt-0.5">
               {lang === "hi" ? "रेलवे सुरक्षा के लिए इंजीनियरिंग" : "Engineering for Railway Safety"}
             </div>
             <p className="text-xs sm:text-sm text-gray-600 font-light max-w-2xl mt-2 leading-relaxed">
               {lang === "hi"
-                ? "सुरक्षित रेलवे क्रॉसिंग, विद्युत निगरानी और महत्वपूर्ण बुनियादी ढांचे के लिए व्यावहारिक समाधानों की इंजीनियरिंग।"
-                : "Engineering practical solutions for safer railway crossings, electrical monitoring and critical infrastructure."}
+                ? "सुरक्षित रेलवे क्रॉसिंग, ऑनलाइन केबल इन्सुलेशन निगरानी और अन्य महत्वपूर्ण बुनियादी ढांचे के लिए व्यावहारिक समाधानों की इंजीनियरिंग।"
+                : "Engineering practical solutions for safer railway crossings, online cable insulation monitoring and other critical infrastructure"}
             </p>
           </div>
 
           <div className="flex flex-col xs:flex-row items-stretch xs:items-center gap-2.5 sm:gap-3">
-            <a
-              href="/contact/quote-req"
+            <Link
+              href="/scan-qr-code"
               className="px-5 py-2.5 rounded-none bg-red-600 hover:bg-[#d62828] text-white text-center text-xs sm:text-sm font-medium transition-all shadow-md"
             >
-              {lang === "hi" ? "कोटेशन प्राप्त करें" : "Request a Quote"}
-            </a>
-            <a
-              href="/support"
+              {lang === "hi" ? "QR कोड स्कैन करें" : "Scan QR Code"}
+            </Link>
+            <Link
+              href="/contact"
               className="px-5 py-2.5 rounded-none border border-gray-300 hover:border-gray-900 text-gray-800 text-center text-xs sm:text-sm font-medium transition-all"
             >
-              {lang === "hi" ? "तकनीकी सहायता" : "Technical Support"}
-            </a>
+              {lang === "hi" ? "संपर्क करें" : "Contact Us"}
+            </Link>
           </div>
         </div>
 
@@ -105,12 +101,12 @@ export default function Footer() {
             <ul className="space-y-2.5 sm:space-y-3">
               {productLinks.map((link) => (
                 <li key={link.name}>
-                  <a
+                  <Link
                     href={link.href}
                     className="text-xs sm:text-[13px] text-gray-700 hover:text-[#ff3131] transition-colors leading-relaxed block"
                   >
                     {link.name}
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -124,12 +120,12 @@ export default function Footer() {
             <ul className="space-y-2.5 sm:space-y-3">
               {companyLinks.map((link) => (
                 <li key={link.name}>
-                  <a
+                  <Link
                     href={link.href}
                     className="text-xs sm:text-[13px] text-gray-700 hover:text-[#ff3131] transition-colors leading-relaxed block"
                   >
                     {link.name}
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -138,17 +134,17 @@ export default function Footer() {
           {/* Column 3: LEGAL & SUPPORT */}
           <div>
             <h4 className="text-xs font-bold text-gray-900 tracking-wider uppercase mb-4 sm:mb-6">
-              {lang === "hi" ? "नीतियां एवं सहायता" : "Legal & Support"}
+              {lang === "hi" ? "उपयोगी लिंक" : "Useful Links"}
             </h4>
             <ul className="space-y-2.5 sm:space-y-3">
               {legalSupportLinks.map((link) => (
                 <li key={link.name}>
-                  <a
+                  <Link
                     href={link.href}
                     className="text-xs sm:text-[13px] text-gray-700 hover:text-[#ff3131] transition-colors leading-relaxed block"
                   >
                     {link.name}
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -161,6 +157,7 @@ export default function Footer() {
 
           <div className="text-xs text-gray-600 order-3 sm:order-1 font-normal">
             {t.footer.copyright}
+            <div className="mt-3 flex flex-wrap gap-4"><Link href="/cookies">Cookie declaration</Link><CookiePreferencesButton /></div>
           </div>
 
           <div className="order-1 sm:order-2">
@@ -183,7 +180,12 @@ export default function Footer() {
           </div>
 
           <div className="order-2 sm:order-3 flex items-center">
-            <GlobalLogo theme="light" size="md" />
+            <p className="max-w-xl text-xs leading-relaxed text-gray-600">
+              {MSME_DECLARATION}{" "}
+              <Link href="/msme-declaration" className="text-red-600 underline underline-offset-4">
+                {lang === "hi" ? "और पढ़ें" : "Read more"}
+              </Link>
+            </p>
           </div>
 
         </div>

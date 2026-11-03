@@ -1,10 +1,3 @@
-"use client";
-
-import React from "react";
-import SubpageLayout from "../components/SubpageLayout";
-import { SUBPAGES_DATA } from "../data/subpagesData";
-
-export default function ContactOverviewPage() {
-  const config = SUBPAGES_DATA["contact"];
-  return <SubpageLayout config={config} />;
-}
+﻿import ContactPage from "../components/ContactPage";
+export const metadata = { title: "Contact Us | Global Devices", description: "Contact Global Devices for sales, service, accounts, careers and general enquiries." };
+export default function Page() { return <ContactPage />; }
