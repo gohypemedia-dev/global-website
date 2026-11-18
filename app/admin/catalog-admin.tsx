@@ -9,15 +9,29 @@ import type {
   ImportResult,
   Product,
   ProductInput,
-  RegistryOption,
+  TechnicalNote,
 } from "@/lib/catalog";
+import {
+  COMPONENT_TYPES,
+  ELB_MODELS,
+  PRODUCT_TYPES,
+  RAILWAY_ZONES,
+  type UnitNumberField,
+  activeNumberFields,
+  displayDate,
+  divisionsForZone,
+  isCompleteElb,
+  todayInIndia,
+  underWarranty,
+  warrantyExpiry,
+} from "@/lib/railway";
 import Papa from "papaparse";
 
 type Section =
   | "Dashboard"
   | "Products"
   | "Categories"
-  | "Form Options"
+  | "Zones & Divisions"
   | "QR codes"
   | "Import / Export";
 
@@ -25,14 +39,14 @@ type Data = {
   products: Product[];
   total: number;
   categories: Category[];
-  options: RegistryOption[];
   stats: { products: number; active: number; categories: number };
   imports: { id: string; kind: string; created_at: string }[];
 };
 
+type Editing = ProductInput & { id?: number; sku?: string };
+
 const emptyProduct: ProductInput = {
   name: "",
-  sku: "",
   category_id: "",
   brand: "GLOBAL",
   model: "",
@@ -40,6 +54,7 @@ const emptyProduct: ProductInput = {
   images: [],
   manufacturing_date: "",
   website_url: "https://global-website.com",
+  product_type: "",
   zone: "",
   division: "",
   station_details: "",
@@ -50,13 +65,22 @@ const emptyProduct: ProductInput = {
   machine_no: "",
   pedestal_no: "",
   locking_no: "",
+  control_panel_no: "",
   date_of_supply: "",
   date_of_installation: "",
   date_of_commissioning: "",
   date_of_warranty_expiry: "",
-  under_warranty: "Yes",
+  under_warranty: "",
   comments: "",
+  service_records: [],
+  technical_notes: [],
 };
+
+/** Short warranty badge: "Under warranty", "Expired" or nothing when no dates are known. */
+function WarrantyBadge({ value }: { value: string }) {
+  if (!value) return <span className="muted-text">—</span>;
+  return <span className={`status ${value === "Yes" ? "" : "inactive"}`}>{value === "Yes" ? "Under warranty" : "Expired"}</span>;
+}
 
 async function api(action: string, body?: unknown) {
   const response = await fetch(
@@ -116,7 +140,7 @@ function Icon({ name }: { name: Section }) {
     Dashboard: "M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z",
     Products: "m3 7 9-4 9 4v10l-9 4-9-4V7Zm0 0 9 4 9-4M12 11v10",
     Categories: "M3 7V4h7l3 3h8v13H3V7Z",
-    "Form Options": "M12 6V4m0 16v-2m8-6h2M2 12h2m13.657-5.657 1.414-1.414M4.929 19.071l1.414-1.414m0-11.314L4.929 4.929m14.142 14.142-1.414-1.414M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z",
+    "Zones & Divisions": "M4 19h16M6 15l3-8 3 5 3-3 3 6M9 7V4",
     "QR codes": "M3 3h6v6H3zM15 3h6v6h-6zM3 15h6v6H3zM15 15h3v3h3v3h-6z",
     "Import / Export": "M7 3v13m-4-4 4 4 4-4M17 21V8m-4 4 4-4 4 4",
   };
@@ -150,26 +174,11 @@ export default function CatalogAdmin() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
-  const [editing, setEditing] = useState<
-    (ProductInput & { id?: number }) | null
-  >(null);
+  const [editing, setEditing] = useState<Editing | null>(null);
   const [selected, setSelected] = useState<Product | null>(null);
   const [categoryEdit, setCategoryEdit] = useState<{
     id?: string;
     name: string;
-  } | null>(null);
-
-  // Dynamic Options Management
-  const [optionCategoryFilter, setOptionCategoryFilter] = useState<
-    "all" | "zone" | "division" | "elb_type" | "part_name"
-  >("all");
-  const [optionEdit, setOptionEdit] = useState<{
-    id?: string;
-    category: "zone" | "division" | "elb_type" | "part_name" | string;
-    label: string;
-    value?: string;
-    parent_value?: string;
-    sort_order?: number;
   } | null>(null);
 
   // Import / Export
@@ -243,44 +252,11 @@ export default function CatalogAdmin() {
 
   function addProduct() {
     setError("");
-    setEditing({
-      ...emptyProduct,
-      images: [],
-      category_id: data?.categories[0]?.id || "",
-      zone: data?.options?.find((o) => o.category === "zone")?.value || "",
-    });
+    setEditing({ ...emptyProduct, images: [], service_records: [], technical_notes: [] });
   }
 
-  // Precomputed options
-  const zoneOptions = useMemo(
-    () => (data?.options || []).filter((o) => o.category === "zone"),
-    [data?.options],
-  );
-  const allDivisionOptions = useMemo(
-    () => (data?.options || []).filter((o) => o.category === "division"),
-    [data?.options],
-  );
-  const elbTypeOptions = useMemo(
-    () => (data?.options || []).filter((o) => o.category === "elb_type"),
-    [data?.options],
-  );
-  const partNameOptions = useMemo(
-    () => (data?.options || []).filter((o) => o.category === "part_name"),
-    [data?.options],
-  );
-
-  // Filter divisions based on currently selected zone in editing form
-  const availableDivisions = useMemo(() => {
-    if (!editing?.zone) return allDivisionOptions;
-    const filtered = allDivisionOptions.filter(
-      (d) =>
-        !d.parent_value ||
-        d.parent_value === editing.zone ||
-        editing.zone.includes(d.parent_value) ||
-        d.parent_value.includes(editing.zone),
-    );
-    return filtered.length > 0 ? filtered : allDivisionOptions;
-  }, [allDivisionOptions, editing?.zone]);
+  // Divisions of the zone chosen in the form (the dropdown lists only these).
+  const availableDivisions = useMemo(() => divisionsForZone(editing?.zone || ""), [editing?.zone]);
 
   async function signIn(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -296,24 +272,52 @@ export default function CatalogAdmin() {
     });
   }
 
+  /** Uploads images (up to `room` of them) and returns their URLs. */
+  async function uploadFiles(files: FileList, room: number): Promise<string[]> {
+    const urls: string[] = [];
+    for (const file of Array.from(files).slice(0, Math.max(0, room))) {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/catalog/upload", { method: "POST", body: formData });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || "Image upload failed.");
+      urls.push(d.url);
+    }
+    return urls;
+  }
+
   async function uploadImages(files: FileList | null) {
     if (!files?.length || !editing) return;
     action(async () => {
-      const uploaded: string[] = [...editing.images];
-      for (const file of Array.from(files)) {
-        if (uploaded.length >= 8) break;
-        const formData = new FormData();
-        formData.append("file", file);
-        const res = await fetch("/api/catalog/upload", {
-          method: "POST",
-          body: formData,
-        });
-        const d = await res.json();
-        if (!res.ok) throw new Error(d.error || "Image upload failed.");
-        uploaded.push(d.url);
-      }
-      setEditing({ ...editing, images: uploaded });
+      const urls = await uploadFiles(files, 8 - editing.images.length);
+      setEditing((prev) => (prev ? { ...prev, images: [...prev.images, ...urls] } : prev));
       setNotice("Images uploaded.");
+    });
+  }
+
+  function updateNote(index: number, patch: Partial<TechnicalNote>) {
+    setEditing((prev) =>
+      prev
+        ? { ...prev, technical_notes: prev.technical_notes.map((n, i) => (i === index ? { ...n, ...patch } : n)) }
+        : prev,
+    );
+  }
+
+  function uploadNoteImages(index: number, files: FileList | null) {
+    if (!files?.length || !editing) return;
+    action(async () => {
+      const urls = await uploadFiles(files, 8 - (editing.technical_notes[index]?.images.length ?? 0));
+      setEditing((prev) =>
+        prev
+          ? {
+              ...prev,
+              technical_notes: prev.technical_notes.map((n, i) =>
+                i === index ? { ...n, images: [...n.images, ...urls] } : n,
+              ),
+            }
+          : prev,
+      );
+      setNotice("Note images uploaded.");
     });
   }
 
@@ -321,10 +325,56 @@ export default function CatalogAdmin() {
     e.preventDefault();
     if (!editing) return;
     action(async () => {
-      await api("product", editing);
+      const saved = await api("product", editing);
       setEditing(null);
       await load();
-      setNotice(editing.id ? "Product updated." : "Product added.");
+      const created = saved.ids?.length ?? 0;
+      setNotice(
+        editing.id
+          ? "Equipment record updated."
+          : created > 1
+            ? `Complete ELB added: ${created} QR codes created (1 Control Panel, 2 Locking and 2 Pedestal Units).`
+            : "Equipment added. Its QR code has been generated.",
+      );
+    });
+  }
+
+  /** Changing the Type of Product clears unit numbers that do not apply to it. */
+  function changeProductType(type: string) {
+    if (!editing) return;
+    const active = activeNumberFields(type);
+    const next: Editing = { ...editing, product_type: type };
+    for (const field of ["machine_no", "pedestal_no", "locking_no", "control_panel_no"] as UnitNumberField[]) {
+      // Units of a Complete ELB keep the machine number they belong to.
+      if (!active.includes(field) && !(field === "machine_no" && editing.elb_type)) next[field] = "";
+    }
+    setEditing(next);
+  }
+
+  function unitField(field: UnitNumberField, label: string, placeholder: string, hint?: string) {
+    if (!editing) return null;
+    const enabled =
+      activeNumberFields(editing.product_type).includes(field) ||
+      (field === "machine_no" && Boolean(editing.elb_type));
+    return (
+      <label key={field}>
+        {label}
+        <input
+          disabled={!enabled}
+          placeholder={enabled ? placeholder : "Not used for this product"}
+          value={editing[field]}
+          onChange={(e) => setEditing({ ...editing, [field]: e.target.value })}
+        />
+        {enabled && hint && <small>{hint}</small>}
+      </label>
+    );
+  }
+
+  function updateServiceRecord(index: number, patch: Partial<{ date: string; details: string }>) {
+    if (!editing) return;
+    setEditing({
+      ...editing,
+      service_records: editing.service_records.map((r, i) => (i === index ? { ...r, ...patch } : r)),
     });
   }
 
@@ -438,7 +488,7 @@ export default function CatalogAdmin() {
     "Dashboard",
     "Products",
     "Categories",
-    "Form Options",
+    "Zones & Divisions",
     "QR codes",
     "Import / Export",
   ];
@@ -447,11 +497,10 @@ export default function CatalogAdmin() {
     Dashboard: "A clear view of your railway equipment registry.",
     Products: "Manage the information behind every ELB unit scan.",
     Categories: "Organize equipment lines and component types.",
-    "Form Options":
-      "Configure 19 Indian Railway Zones, Divisions, ELB Types, and Part Names.",
+    "Zones & Divisions": `The ${RAILWAY_ZONES.length} Zonal Railways and their divisions used in every dropdown and in the Excel template.`,
     "QR codes": "Permanent links. Ready for your equipment labels.",
     "Import / Export":
-      "Move your catalog in and out via Excel (.xlsx) or CSV, without duplicates.",
+      "Move your registry in and out with the Excel Master Sheet, without duplicates.",
   };
 
   const productTable = (recent = false) => (
@@ -459,10 +508,11 @@ export default function CatalogAdmin() {
       <table>
         <thead>
           <tr>
-            <th>Equipment / Product</th>
-            <th>QR Code / Machine No.</th>
+            <th>Type of Product</th>
+            <th>QR Code Number</th>
             <th>Zonal Railway & Division</th>
-            <th>Station & LC Gate</th>
+            <th>Nearby Station</th>
+            <th>Warranty</th>
             <th>Status</th>
             <th>
               <span className="sr-only">Actions</span>
@@ -484,8 +534,15 @@ export default function CatalogAdmin() {
                   <span>
                     <strong>{p.name}</strong>
                     <small>
-                      {p.elb_type || p.category}
-                      {p.part_name ? ` · ${p.part_name}` : ""}
+                      {[
+                        p.elb_type,
+                        p.machine_no && `Machine ${p.machine_no}`,
+                        p.pedestal_no && `Pedestal ${p.pedestal_no}`,
+                        p.locking_no && `Locking ${p.locking_no}`,
+                        p.control_panel_no && `Panel ${p.control_panel_no}`,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ") || p.category}
                     </small>
                   </span>
                 </button>
@@ -507,6 +564,14 @@ export default function CatalogAdmin() {
                   {p.station_details || "—"}
                   {p.lc_gate_no ? ` (Gate ${p.lc_gate_no})` : ""}
                 </span>
+              </td>
+              <td>
+                <WarrantyBadge value={p.under_warranty} />
+                {p.date_of_warranty_expiry && (
+                  <small className="muted-text block-text">
+                    {p.under_warranty === "Yes" ? "till" : "on"} {displayDate(p.date_of_warranty_expiry)}
+                  </small>
+                )}
               </td>
               <td>
                 <span className={`status ${p.active ? "" : "inactive"}`}>
@@ -644,23 +709,7 @@ export default function CatalogAdmin() {
                 >
                   ＋ Add category
                 </button>
-              ) : section === "Form Options" ? (
-                <button
-                  className="primary"
-                  onClick={() =>
-                    setOptionEdit({
-                      category:
-                        optionCategoryFilter === "all"
-                          ? "zone"
-                          : optionCategoryFilter,
-                      label: "",
-                      parent_value: "",
-                    })
-                  }
-                >
-                  ＋ Add Option
-                </button>
-              ) : (
+              ) : section === "Zones & Divisions" ? null : (
                 <>
                   <button
                     className="secondary"
@@ -706,9 +755,9 @@ export default function CatalogAdmin() {
                       ],
                       [
                         "Indian Railway Zones",
-                        zoneOptions.length || 19,
-                        "Configured railway zones",
-                        "Form Options",
+                        RAILWAY_ZONES.length,
+                        "Zonal Railways with their divisions",
+                        "Zones & Divisions",
                       ],
                     ].map(([label, value, caption, icon]) => (
                       <div className="stat-card" key={label}>
@@ -763,7 +812,7 @@ export default function CatalogAdmin() {
                             <div className="empty-label">
                               <Mark />
                             </div>
-                            <strong>ELB 24V DC - Boom Unit</strong>
+                            <strong>Pedestal Unit</strong>
                             <span>QR assigned on creation</span>
                           </>
                         )}
@@ -803,7 +852,7 @@ export default function CatalogAdmin() {
                   <div className="filter-bar">
                     <input
                       aria-label="Search products"
-                      placeholder="Search Zone, Division, Station, ELB Type, Gate No, Machine No, SKU…"
+                      placeholder="Search QR Code Number, Type, Machine / Pedestal / Locking / Panel No., Zone, Division, Station…"
                       value={query}
                       onChange={(e) => {
                         setQuery(e.target.value);
@@ -995,100 +1044,91 @@ export default function CatalogAdmin() {
                 </section>
               )}
 
-              {section === "Form Options" && (
-                <section className="panel">
-                  <div className="filter-bar">
-                    <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                      {[
-                        ["all", "All Options"],
-                        ["zone", "19 Railway Zones"],
-                        ["division", "Divisions"],
-                        ["elb_type", "Types of ELB"],
-                        ["part_name", "Part Names"],
-                      ].map(([k, label]) => (
-                        <button
-                          key={k}
-                          className={optionCategoryFilter === k ? "primary" : "secondary"}
-                          onClick={() => setOptionCategoryFilter(k as any)}
-                        >
-                          {label}
-                        </button>
-                      ))}
+              {section === "Zones & Divisions" && (
+                <>
+                  <section className="panel">
+                    <div className="filter-bar">
+                      <input
+                        aria-label="Search zones and divisions"
+                        placeholder="Search a zone or division…"
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                      />
+                      <span>
+                        {RAILWAY_ZONES.length} zones ·{" "}
+                        {RAILWAY_ZONES.reduce((n, z) => n + z.divisions.length, 0)} divisions
+                      </span>
                     </div>
-                    <span style={{ marginLeft: "auto" }}>
-                      {data.options.length} dynamic options
-                    </span>
-                  </div>
-                  <div className="table-scroll">
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Category</th>
-                          <th>Option Label / Value</th>
-                          <th>Parent Zone (if division)</th>
-                          <th>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {data.options
-                          .filter(
-                            (o) =>
-                              optionCategoryFilter === "all" ||
-                              o.category === optionCategoryFilter,
-                          )
-                          .map((opt) => (
-                            <tr key={opt.id}>
+                    <div className="table-scroll">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Zonal Railway</th>
+                            <th>Code</th>
+                            <th>Divisions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {RAILWAY_ZONES.filter(
+                            (z) =>
+                              !query ||
+                              `${z.zone} ${z.code} ${z.divisions.join(" ")}`
+                                .toLowerCase()
+                                .includes(query.toLowerCase()),
+                          ).map((z) => (
+                            <tr key={z.zone}>
                               <td>
-                                <span className="status">
-                                  {opt.category === "zone"
-                                    ? "Zonal Railway"
-                                    : opt.category === "division"
-                                      ? "Division"
-                                      : opt.category === "elb_type"
-                                        ? "Type of ELB"
-                                        : opt.category === "part_name"
-                                          ? "Part Name"
-                                          : opt.category}
-                                </span>
+                                <strong>{z.zone}</strong>
                               </td>
                               <td>
-                                <strong>{opt.label}</strong>
+                                <code>{z.code}</code>
                               </td>
-                              <td>{opt.parent_value || "—"}</td>
-                              <td>
-                                <button
-                                  className="text-button"
-                                  onClick={() => setOptionEdit(opt)}
-                                >
-                                  Edit
-                                </button>
-                                <button
-                                  className="text-button danger"
-                                  disabled={busy}
-                                  onClick={() => {
-                                    if (
-                                      window.confirm(
-                                        `Delete option “${opt.label}”?`,
-                                      )
-                                    )
-                                      action(async () => {
-                                        await api("delete-option", {
-                                          id: opt.id,
-                                        });
-                                        await load();
-                                        setNotice("Option deleted.");
-                                      });
-                                  }}
-                                >
-                                  Delete
-                                </button>
-                              </td>
+                              <td>{z.divisions.join(", ")}</td>
                             </tr>
                           ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </section>
+                        </tbody>
+                      </table>
+                    </div>
+                  </section>
+                  <section className="panel">
+                    <div className="panel-heading">
+                      <div>
+                        <h2>Types of Product</h2>
+                        <p>
+                          A Complete ELB creates 5 QR codes: 1 Control Panel Unit, 2 Locking Units
+                          and 2 Pedestal Units. Individual units create one QR code.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="table-scroll">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Type of Product</th>
+                            <th>Numbers recorded</th>
+                            <th>QR codes created</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {PRODUCT_TYPES.map((t) => (
+                            <tr key={t}>
+                              <td>
+                                <strong>{t}</strong>
+                                {isCompleteElb(t) && <small className="muted-text block-text">Complete ELB</small>}
+                              </td>
+                              <td>
+                                {isCompleteElb(t)
+                                  ? "Machine, Pedestal (×2), Locking (×2) and Control Panel No."
+                                  : `${t.replace(" Unit", "")} No.`}
+                              </td>
+                              <td>{isCompleteElb(t) ? 5 : 1}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </section>
+                </>
               )}
 
               {section === "Import / Export" && (
@@ -1096,25 +1136,27 @@ export default function CatalogAdmin() {
                   <div className="import-layout">
                     <section className="panel import-panel">
                       <span className="eyebrow">BULK IMPORT</span>
-                      <h2>Upload QR Code File (.xlsx or .csv)</h2>
+                      <h2>Upload the Master Sheet (.xlsx or .csv)</h2>
                       <p>
-                        Upload your Master Sheet Excel (.xlsx) or CSV file. All
-                        19 Railway Zone & Division fields will be mapped and
-                        validated automatically.
+                        Download the Excel template: Type of Product, Zonal Railway
+                        and Division are dropdowns (Division lists only the chosen
+                        zone&apos;s divisions), and dates are checked as you type. Do
+                        not add QR Code Numbers; the registry generates a random
+                        16-digit number for every unit, and a Complete ELB gets 5.
                       </p>
 
-                      <div style={{ display: "flex", gap: "10px", margin: "14px 0" }}>
+                      <div style={{ display: "flex", gap: "10px", margin: "14px 0", flexWrap: "wrap" }}>
                         <a
                           className="secondary"
                           href="/api/catalog/template?kind=products&format=xlsx"
-                          download="QR-Code-Template.xlsx"
+                          download="Master-Sheet-Template.xlsx"
                         >
                           ↧ Download Excel Template (.xlsx)
                         </a>
                         <a
                           className="secondary"
                           href="/api/catalog/template?kind=products&format=csv"
-                          download="QR-Code-Template.csv"
+                          download="Master-Sheet-Template.csv"
                         >
                           ↧ Download CSV Template
                         </a>
@@ -1126,7 +1168,7 @@ export default function CatalogAdmin() {
                           {filename || "Choose Excel (.xlsx) or CSV file"}
                         </strong>
                         <span>
-                          Supports QR Code File.xlsx or CSV · Up to 5,000 rows
+                          Master Sheet .xlsx or CSV · Up to 5,000 rows
                         </span>
                         <input
                           key={kind}
@@ -1201,7 +1243,7 @@ export default function CatalogAdmin() {
                         <Icon name="Products" />
                         <span>
                           <strong>Export Excel (.xlsx)</strong>
-                          <small>Master Sheet layout with all 19 zone specs</small>
+                          <small>Master Sheet layout with dropdowns, QR Code Numbers and warranty status</small>
                         </span>
                         <span>↧</span>
                       </a>
@@ -1271,8 +1313,8 @@ export default function CatalogAdmin() {
                           <p>
                             {result.total} rows parsed ·{" "}
                             {result.id
-                              ? `${result.created} created`
-                              : `${result.rows.filter((r) => r.status === "new").length} ready to import`}{" "}
+                              ? `${result.created} rows added (${result.qrCodes ?? result.created} QR codes)`
+                              : `${result.rows.filter((r) => r.status === "new").length} ready (${result.qrCodes ?? 0} QR codes)`}{" "}
                             · {result.duplicates} duplicates · {result.invalid}{" "}
                             invalid
                           </p>
@@ -1332,9 +1374,10 @@ export default function CatalogAdmin() {
                           <thead>
                             <tr>
                               <th>Row</th>
-                              <th>Equipment / QR Number</th>
+                              <th>Type of Product</th>
                               <th>Zonal Railway & Division</th>
-                              <th>Station & Gate</th>
+                              <th>Nearby Station</th>
+                              <th>QR codes</th>
                               <th>Status</th>
                               <th>Details</th>
                             </tr>
@@ -1345,30 +1388,20 @@ export default function CatalogAdmin() {
                                 <td>{r.row}</td>
                                 <td>
                                   <strong>
-                                    {r.data["Product Name"] ||
-                                      r.data["Type of ELB"] ||
-                                      r.data["QR Code Number"] ||
-                                      "—"}
+                                    {r.data["Type of Product"] || r.data["Category Name"] || "—"}
                                   </strong>
-                                  <br />
-                                  <code>
-                                    {r.data.SKU ||
-                                      r.data["QR Code Number"] ||
-                                      ""}
-                                  </code>
+                                  {r.data["Machine No."] && (
+                                    <small className="muted-text block-text">
+                                      Machine {r.data["Machine No."]}
+                                    </small>
+                                  )}
                                 </td>
                                 <td>
-                                  {r.data.Zone || r.data["Zonal Railway"] || "—"}{" "}
-                                  {r.data.Division
-                                    ? `(${r.data.Division})`
-                                    : ""}
+                                  {r.data["Zonal Railway"] || "—"}{" "}
+                                  {r.data.Division ? `(${r.data.Division})` : ""}
                                 </td>
-                                <td>
-                                  {r.data["Station Details"] || "—"}{" "}
-                                  {r.data["LC Gate No."]
-                                    ? `[Gate ${r.data["LC Gate No."]}]`
-                                    : ""}
-                                </td>
+                                <td>{r.data["Nearby Station"] || "—"}</td>
+                                <td>{r.qrCodes || "—"}</td>
                                 <td>
                                   <span
                                     className={`status ${r.status === "invalid" ? "invalid" : r.status === "duplicate" ? "inactive" : ""}`}
@@ -1426,278 +1459,300 @@ export default function CatalogAdmin() {
             {feedback}
             <p className="form-note">
               {editing.id
-                ? "Existing QR code and permanent public scan link will stay unchanged."
-                : "A permanent QR code link is generated automatically upon saving."}
+                ? "The QR Code Number and permanent public scan link of this record never change."
+                : "QR Code Numbers are generated automatically as random 16-digit numbers. A Complete ELB creates 5 QR codes: 1 Control Panel Unit, 2 Locking Units and 2 Pedestal Units."}{" "}
+              All fields are optional.
             </p>
 
             <div className="form-grid">
-              {/* Railway Zone */}
+              {editing.id && (
+                <label>
+                  QR Code Number
+                  <input value={editing.sku || ""} readOnly disabled />
+                  <small>Generated automatically. It cannot be edited.</small>
+                </label>
+              )}
+
+              {/* Type of Product (also the product title) */}
+              <label className={editing.id ? "" : "full-width"}>
+                Type of Product
+                <select value={editing.product_type} onChange={(e) => changeProductType(e.target.value)}>
+                  <option value="">Select Type of Product</option>
+                  {!editing.id && (
+                    <optgroup label="Complete ELB (creates 5 QR codes)">
+                      {ELB_MODELS.map((t) => (
+                        <option key={t} value={t}>
+                          {t}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                  <optgroup label="Individual units (1 QR code)">
+                    {COMPONENT_TYPES.map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
+                  </optgroup>
+                </select>
+                {editing.id && editing.elb_type && <small>Part of Complete ELB: {editing.elb_type}</small>}
+              </label>
+
+              {unitField("machine_no", "Machine No.", "e.g. MCH-9921")}
+              {unitField(
+                "pedestal_no",
+                "Pedestal No.",
+                isCompleteElb(editing.product_type) ? "e.g. PED-01, PED-02" : "e.g. PED-01",
+                isCompleteElb(editing.product_type) ? "Enter both Pedestal Numbers, separated by a comma." : undefined,
+              )}
+              {unitField(
+                "locking_no",
+                "Locking No.",
+                isCompleteElb(editing.product_type) ? "e.g. LCK-01, LCK-02" : "e.g. LCK-01",
+                isCompleteElb(editing.product_type) ? "Enter both Locking Numbers, separated by a comma." : undefined,
+              )}
+              {unitField("control_panel_no", "Control Panel No.", "e.g. CP-101")}
+
+              {/* Zonal Railway */}
               <label>
-                Zonal Railway *
+                Zonal Railway
                 <select
-                  required
                   value={editing.zone}
-                  onChange={(e) => {
-                    const newZone = e.target.value;
-                    const matchDivs = allDivisionOptions.filter(
-                      (d) =>
-                        !d.parent_value ||
-                        d.parent_value === newZone ||
-                        newZone.includes(d.parent_value),
-                    );
-                    setEditing({
-                      ...editing,
-                      zone: newZone,
-                      division: matchDivs[0]?.value || "",
-                    });
-                  }}
+                  onChange={(e) => setEditing({ ...editing, zone: e.target.value, division: "" })}
                 >
-                  <option value="">Select Indian Railway Zone</option>
-                  {zoneOptions.map((z) => (
-                    <option key={z.id} value={z.value}>
-                      {z.label}
+                  <option value="">Select Zonal Railway</option>
+                  {RAILWAY_ZONES.map((z) => (
+                    <option key={z.zone} value={z.zone}>
+                      {z.zone}
                     </option>
                   ))}
                 </select>
               </label>
 
-              {/* Division */}
+              {/* Division (only the chosen zone's divisions) */}
               <label>
-                Division / District *
+                Division
                 <select
-                  required
                   value={editing.division}
-                  onChange={(e) =>
-                    setEditing({ ...editing, division: e.target.value })
-                  }
+                  disabled={!editing.zone}
+                  onChange={(e) => setEditing({ ...editing, division: e.target.value })}
                 >
-                  <option value="">Select Division</option>
+                  <option value="">{editing.zone ? "Select Division" : "Select the Zonal Railway first"}</option>
                   {availableDivisions.map((d) => (
-                    <option key={d.id} value={d.value}>
-                      {d.label} {d.parent_value ? `(${d.parent_value.split(" ")[0]})` : ""}
+                    <option key={d} value={d}>
+                      {d}
                     </option>
                   ))}
+                  {editing.division && !availableDivisions.includes(editing.division) && (
+                    <option value={editing.division}>{editing.division} (not in this zone)</option>
+                  )}
                 </select>
               </label>
 
-              {/* Station Details */}
               <label>
-                Station Details
+                Nearby Station
                 <input
-                  placeholder="e.g. New Delhi Station Yard / Track 2"
+                  placeholder="e.g. Ghaziabad Junction"
                   value={editing.station_details}
-                  onChange={(e) =>
-                    setEditing({
-                      ...editing,
-                      station_details: e.target.value,
-                    })
-                  }
+                  onChange={(e) => setEditing({ ...editing, station_details: e.target.value })}
                 />
               </label>
 
-              {/* LC Gate No. */}
-              <label>
-                LC Gate No.
-                <input
-                  placeholder="e.g. LC-42 or Special Class"
-                  value={editing.lc_gate_no}
-                  onChange={(e) =>
-                    setEditing({ ...editing, lc_gate_no: e.target.value })
-                  }
-                />
-              </label>
-
-              {/* Type of ELB */}
-              <label>
-                Type of ELB
-                <select
-                  value={editing.elb_type}
-                  onChange={(e) =>
-                    setEditing({ ...editing, elb_type: e.target.value })
-                  }
-                >
-                  <option value="">Select or specify Type of ELB</option>
-                  {elbTypeOptions.map((t) => (
-                    <option key={t.id} value={t.value}>
-                      {t.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              {/* Part Name */}
-              <label>
-                Part Name
-                <select
-                  value={editing.part_name}
-                  onChange={(e) =>
-                    setEditing({ ...editing, part_name: e.target.value })
-                  }
-                >
-                  <option value="">Select or specify Part Name</option>
-                  {partNameOptions.map((p) => (
-                    <option key={p.id} value={p.value}>
-                      {p.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              {/* Machine No. */}
-              <label>
-                Machine No.
-                <input
-                  placeholder="e.g. MCH-98124"
-                  value={editing.machine_no}
-                  onChange={(e) =>
-                    setEditing({ ...editing, machine_no: e.target.value })
-                  }
-                />
-              </label>
-
-              {/* Pedestal No. */}
-              <label>
-                Pedestal No.
-                <input
-                  placeholder="e.g. PED-08"
-                  value={editing.pedestal_no}
-                  onChange={(e) =>
-                    setEditing({ ...editing, pedestal_no: e.target.value })
-                  }
-                />
-              </label>
-
-              {/* Locking Number */}
-              <label>
-                Locking Number
-                <input
-                  placeholder="e.g. LCK-541"
-                  value={editing.locking_no}
-                  onChange={(e) =>
-                    setEditing({ ...editing, locking_no: e.target.value })
-                  }
-                />
-              </label>
-
-              {/* Version No. */}
               <label>
                 Version No.
                 <input
                   placeholder="e.g. v2.4"
                   value={editing.version_no}
-                  onChange={(e) =>
-                    setEditing({ ...editing, version_no: e.target.value })
-                  }
+                  onChange={(e) => setEditing({ ...editing, version_no: e.target.value })}
                 />
               </label>
 
-              {/* Date of Supply */}
               <label>
                 Date of Supply
                 <input
                   type="date"
                   value={editing.date_of_supply}
-                  onChange={(e) =>
-                    setEditing({ ...editing, date_of_supply: e.target.value })
-                  }
+                  onChange={(e) => setEditing({ ...editing, date_of_supply: e.target.value })}
                 />
               </label>
 
-              {/* Date of Installation */}
               <label>
                 Date of Installation
                 <input
                   type="date"
                   value={editing.date_of_installation}
-                  onChange={(e) =>
-                    setEditing({
-                      ...editing,
-                      date_of_installation: e.target.value,
-                    })
-                  }
+                  onChange={(e) => setEditing({ ...editing, date_of_installation: e.target.value })}
                 />
               </label>
 
-              {/* Date of Commissioning */}
               <label>
                 Date of Commissioning
                 <input
                   type="date"
                   value={editing.date_of_commissioning}
-                  onChange={(e) =>
-                    setEditing({
-                      ...editing,
-                      date_of_commissioning: e.target.value,
-                    })
-                  }
+                  onChange={(e) => setEditing({ ...editing, date_of_commissioning: e.target.value })}
                 />
               </label>
 
-              {/* Date of Warranty Expiry */}
-              <label>
-                Date of Warranty Expiry
-                <input
-                  type="date"
-                  value={editing.date_of_warranty_expiry}
-                  onChange={(e) =>
+              {(() => {
+                const expiry = warrantyExpiry(editing.date_of_supply, editing.date_of_installation);
+                const status = underWarranty(expiry);
+                return (
+                  <>
+                    <label>
+                      Date of Warranty Expiry
+                      <input readOnly disabled value={expiry ? displayDate(expiry) : "Calculated from the dates above"} />
+                      <small>2 years from supply or 1 year from installation, whichever is earlier.</small>
+                    </label>
+                    <label>
+                      Under Warranty?
+                      <input readOnly disabled value={status || "—"} />
+                      <small>Checked automatically against today&apos;s date.</small>
+                    </label>
+                  </>
+                );
+              })()}
+
+              {/* Service Record: one row per service entry */}
+              <fieldset className="full-width service-records">
+                <legend>Service Record</legend>
+                {editing.service_records.length === 0 && (
+                  <p className="field-help">No service entries yet.</p>
+                )}
+                {editing.service_records.map((record, i) => (
+                  <div className="service-row" key={i}>
+                    <input
+                      type="date"
+                      aria-label={`Service date ${i + 1}`}
+                      value={record.date}
+                      onChange={(e) => updateServiceRecord(i, { date: e.target.value })}
+                    />
+                    <input
+                      aria-label={`Service details ${i + 1}`}
+                      placeholder="Work done, parts replaced, engineer…"
+                      value={record.details}
+                      onChange={(e) => updateServiceRecord(i, { details: e.target.value })}
+                    />
+                    <button
+                      type="button"
+                      className="text-button danger"
+                      aria-label={`Remove service entry ${i + 1}`}
+                      onClick={() =>
+                        setEditing({
+                          ...editing,
+                          service_records: editing.service_records.filter((_, j) => j !== i),
+                        })
+                      }
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() =>
                     setEditing({
                       ...editing,
-                      date_of_warranty_expiry: e.target.value,
+                      service_records: [...editing.service_records, { date: "", details: "" }],
                     })
-                  }
-                />
-              </label>
-
-              {/* Under Warranty? */}
-              <label>
-                Under Warranty?
-                <select
-                  value={editing.under_warranty}
-                  onChange={(e) =>
-                    setEditing({ ...editing, under_warranty: e.target.value })
                   }
                 >
-                  <option value="Yes">Yes</option>
-                  <option value="No">No</option>
-                </select>
-              </label>
+                  ＋ Add service entry
+                </button>
+              </fieldset>
 
-              {/* QR Code Number / SKU */}
               <label>
-                QR Code Number / SKU
+                LC Gate No.
                 <input
-                  placeholder="Auto-generated if left blank"
-                  value={editing.sku}
-                  onChange={(e) =>
-                    setEditing({ ...editing, sku: e.target.value })
-                  }
+                  placeholder="e.g. LC-42"
+                  value={editing.lc_gate_no}
+                  onChange={(e) => setEditing({ ...editing, lc_gate_no: e.target.value })}
                 />
               </label>
 
-              {/* Product Name */}
-              <label className="full-width">
-                Product / Title (Optional)
-                <input
-                  placeholder="Auto-synthesized from ELB Type & Station if left blank"
-                  value={editing.name}
-                  onChange={(e) =>
-                    setEditing({ ...editing, name: e.target.value })
+              {/* Comments / Technical Notes: separate entries, each with text and images */}
+              <fieldset className="full-width tech-notes">
+                <legend>Comments / Technical Notes</legend>
+                {editing.technical_notes.length === 0 && (
+                  <p className="field-help">No notes yet. Add a note to record a comment, inspection remark or photo.</p>
+                )}
+                {editing.technical_notes.map((note, i) => (
+                  <div className="tech-note" key={i}>
+                    <div className="tech-note-head">
+                      <strong>Note {i + 1}</strong>
+                      <input
+                        type="date"
+                        aria-label={`Note ${i + 1} date`}
+                        value={note.date}
+                        onChange={(e) => updateNote(i, { date: e.target.value })}
+                      />
+                      <button
+                        type="button"
+                        className="text-button danger"
+                        aria-label={`Remove note ${i + 1}`}
+                        onClick={() =>
+                          setEditing({
+                            ...editing,
+                            technical_notes: editing.technical_notes.filter((_, j) => j !== i),
+                          })
+                        }
+                      >
+                        Remove
+                      </button>
+                    </div>
+                    <textarea
+                      rows={3}
+                      aria-label={`Note ${i + 1} text`}
+                      placeholder="Comments, inspection remarks, or RDSO compliance details..."
+                      value={note.text}
+                      onChange={(e) => updateNote(i, { text: e.target.value })}
+                    />
+                    <label className="note-upload">
+                      Add images to this note
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        multiple
+                        disabled={busy || note.images.length >= 8}
+                        onChange={(e) => {
+                          uploadNoteImages(i, e.target.files);
+                          e.target.value = "";
+                        }}
+                      />
+                      <small>Up to 8 images per note. PNG, JPEG, or WebP. Maximum 5 MB each.</small>
+                    </label>
+                    {note.images.length > 0 && (
+                      <div className="image-previews">
+                        {note.images.map((src, k) => (
+                          <div key={src}>
+                            <img src={src} alt={`Note ${i + 1} image ${k + 1}`} />
+                            <button
+                              type="button"
+                              aria-label={`Remove note ${i + 1} image ${k + 1}`}
+                              onClick={() => updateNote(i, { images: note.images.filter((s) => s !== src) })}
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() =>
+                    setEditing({
+                      ...editing,
+                      technical_notes: [...editing.technical_notes, { date: todayInIndia(), text: "", images: [] }],
+                    })
                   }
-                />
-              </label>
-
-              {/* Comments / Notes */}
-              <label className="full-width">
-                Comments / Technical Notes
-                <textarea
-                  rows={3}
-                  placeholder="Comments, inspection remarks, or RDSO compliance details..."
-                  value={editing.comments}
-                  onChange={(e) =>
-                    setEditing({ ...editing, comments: e.target.value })
-                  }
-                />
-              </label>
+                >
+                  ＋ Add note
+                </button>
+              </fieldset>
 
               {/* Images */}
               <div className="full-width">
@@ -1818,110 +1873,6 @@ export default function CatalogAdmin() {
         </dialog>
       )}
 
-      {/* Option Add/Edit Modal (Zones, Divisions, ELB Types, Parts) */}
-      {optionEdit && (
-        <dialog
-          open
-          aria-modal="true"
-          className="modal-backdrop"
-          aria-labelledby="option-title"
-          onKeyDown={trapFocus}
-        >
-          <form
-            className="modal small-modal"
-            onSubmit={(e) => {
-              e.preventDefault();
-              action(async () => {
-                await api("save-option", optionEdit);
-                setOptionEdit(null);
-                await load();
-                setNotice("Option saved.");
-              });
-            }}
-          >
-            <div className="modal-heading">
-              <h2 id="option-title">
-                {optionEdit.id ? "Edit Dropdown Option" : "Add Dropdown Option"}
-              </h2>
-              <button
-                type="button"
-                className="close-button"
-                disabled={busy}
-                onClick={() => setOptionEdit(null)}
-                aria-label="Close"
-              >
-                ×
-              </button>
-            </div>
-            {feedback}
-
-            <label>
-              Field Category
-              <select
-                value={optionEdit.category}
-                onChange={(e) =>
-                  setOptionEdit({ ...optionEdit, category: e.target.value as any })
-                }
-              >
-                <option value="zone">Zonal Railway (Zone)</option>
-                <option value="division">Division / District</option>
-                <option value="elb_type">Type of ELB</option>
-                <option value="part_name">Part Name</option>
-              </select>
-            </label>
-
-            <label>
-              Option Name / Label *
-              <input
-                autoFocus
-                required
-                placeholder="e.g. North Western Railway (NWR) or Boom Assembly"
-                value={optionEdit.label}
-                onChange={(e) =>
-                  setOptionEdit({ ...optionEdit, label: e.target.value })
-                }
-              />
-            </label>
-
-            {optionEdit.category === "division" && (
-              <label>
-                Parent Zonal Railway
-                <select
-                  value={optionEdit.parent_value || ""}
-                  onChange={(e) =>
-                    setOptionEdit({
-                      ...optionEdit,
-                      parent_value: e.target.value,
-                    })
-                  }
-                >
-                  <option value="">Any / General Division</option>
-                  {zoneOptions.map((z) => (
-                    <option key={z.id} value={z.value}>
-                      {z.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-
-            <div className="modal-actions">
-              <button
-                type="button"
-                className="secondary"
-                disabled={busy}
-                onClick={() => setOptionEdit(null)}
-              >
-                Cancel
-              </button>
-              <button className="primary" disabled={busy}>
-                Save Option
-              </button>
-            </div>
-          </form>
-        </dialog>
-      )}
-
       {/* Product Detail Modal */}
       {selected && (
         <dialog
@@ -1955,20 +1906,23 @@ export default function CatalogAdmin() {
                 </span>
                 <dl className="product-facts">
                   {[
-                    ["QR / SKU", selected.sku],
-                    ["Zonal Railway", selected.zone || "—"],
-                    ["Division", selected.division || "—"],
-                    ["Station Details", selected.station_details || "—"],
-                    ["LC Gate No.", selected.lc_gate_no || "—"],
-                    ["Type of ELB", selected.elb_type || "—"],
-                    ["Part Name", selected.part_name || "—"],
+                    ["QR Code Number", selected.sku],
+                    ["Type of Product", selected.product_type || selected.name],
+                    ["Part of Complete ELB", selected.elb_type || "—"],
                     ["Machine No.", selected.machine_no || "—"],
                     ["Pedestal No.", selected.pedestal_no || "—"],
                     ["Locking No.", selected.locking_no || "—"],
-                    ["Version", selected.version_no || "—"],
-                    ["Date of Supply", selected.date_of_supply || "—"],
-                    ["Installation Date", selected.date_of_installation || "—"],
-                    ["Commissioning Date", selected.date_of_commissioning || "—"],
+                    ["Control Panel No.", selected.control_panel_no || "—"],
+                    ["Zonal Railway", selected.zone || "—"],
+                    ["Division", selected.division || "—"],
+                    ["Nearby Station", selected.station_details || "—"],
+                    ["Version No.", selected.version_no || "—"],
+                    ["LC Gate No.", selected.lc_gate_no || "—"],
+                    ["Date of Supply", displayDate(selected.date_of_supply) || "—"],
+                    ["Date of Installation", displayDate(selected.date_of_installation) || "—"],
+                    ["Date of Commissioning", displayDate(selected.date_of_commissioning) || "—"],
+                    ["Date of Warranty Expiry", displayDate(selected.date_of_warranty_expiry) || "—"],
+                    ["Under Warranty?", selected.under_warranty || "—"],
                   ].map(([k, v]) => (
                     <div key={k}>
                       <dt>{k}</dt>
@@ -1976,10 +1930,36 @@ export default function CatalogAdmin() {
                     </div>
                   ))}
                 </dl>
-                {selected.comments && (
-                  <p className="description">
-                    <strong>Comments:</strong> {selected.comments}
-                  </p>
+                {selected.service_records.length > 0 && (
+                  <div className="description">
+                    <strong>Service Record</strong>
+                    <ul className="service-list">
+                      {selected.service_records.map((r, i) => (
+                        <li key={i}>
+                          {r.date && <span>{displayDate(r.date)}</span>} {r.details}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {selected.technical_notes.length > 0 && (
+                  <div className="description">
+                    <strong>Comments / Technical Notes</strong>
+                    <ul className="service-list">
+                      {selected.technical_notes.map((n, i) => (
+                        <li key={i}>
+                          {n.date && <span>{displayDate(n.date)}</span>} {n.text}
+                          {n.images.length > 0 && (
+                            <div className="image-previews">
+                              {n.images.map((src) => (
+                                <img src={src} key={src} alt={`Note ${i + 1}`} />
+                              ))}
+                            </div>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 )}
                 <div className="image-previews">
                   {selected.images.map((src) => (

@@ -8,19 +8,17 @@ import {
 } from "@/lib/catalog-auth";
 import {
   categories,
+  createProducts,
   deleteCategory,
-  deleteRegistryOption,
   exportCsv,
   exportXlsx,
   getImport,
   getImports,
   getProduct,
-  getRegistryOptions,
   importSpreadsheet,
   listProducts,
   saveCategory,
   saveProduct,
-  saveRegistryOption,
   setProductActive,
   stats,
   template,
@@ -134,7 +132,7 @@ async function get(request: NextRequest, { params }: Context) {
   if (!(await authenticated())) return json({ error: "Please sign in." }, 401);
 
   if (action === "data") {
-    const [productData, catList, statList, importList, optionsList] =
+    const [productData, catList, statList, importList] =
       await Promise.all([
         listProducts(
           q.get("q") || "",
@@ -145,24 +143,16 @@ async function get(request: NextRequest, { params }: Context) {
         categories(),
         stats(),
         getImports(),
-        getRegistryOptions(),
       ]);
     return json({
       ...productData,
       categories: catList,
       stats: statList,
       imports: importList,
-      options: optionsList,
     });
   }
 
-  if (action === "options") {
-    const category = q.get("category") || undefined;
-    const options = await getRegistryOptions(category);
-    return json({ options });
-  }
-
-  if (action === "import" && id) {
+    if (action === "import" && id) {
     const row = await getImport(id);
     return row
       ? json(JSON.parse(row.result))
@@ -195,7 +185,7 @@ async function get(request: NextRequest, { params }: Context) {
   if (action === "template") {
     const kind = q.get("kind") || "products";
     const format = q.get("format") || "xlsx";
-    const result = template(kind, format);
+    const result = await template(kind, format);
     if (format === "xlsx" && typeof result !== "string") {
       return new Response(new Uint8Array(result), {
         headers: {
@@ -268,8 +258,11 @@ export async function POST(request: NextRequest, { params }: Context) {
       throw new Error("Request is too large.");
 
     const body = await request.json();
-    if (action === "product")
-      return json({ id: await saveProduct(body, body.id) });
+    if (action === "product") {
+      if (body.id) return json({ id: await saveProduct(body, Number(body.id)) });
+      // A Complete ELB creates five records, one per QR code.
+      return json({ ids: await createProducts(body) });
+    }
     if (action === "status") {
       await setProductActive(body.id, Boolean(body.active));
       return json({ ok: true });
@@ -280,14 +273,6 @@ export async function POST(request: NextRequest, { params }: Context) {
     }
     if (action === "delete-category") {
       await deleteCategory(body.id);
-      return json({ ok: true });
-    }
-    if (action === "save-option") {
-      const id = await saveRegistryOption(body);
-      return json({ ok: true, id });
-    }
-    if (action === "delete-option") {
-      await deleteRegistryOption(body.id);
       return json({ ok: true });
     }
     if (action === "import") {

@@ -42,11 +42,11 @@ test("Neon DB connection and admin catalog integration", async () => {
   const createdCat = allCats.find((c) => c.name === testCatName);
   assert.ok(createdCat, "Created category must exist in Neon DB");
 
-  // Create test product
-  const testSku = `NEON-${Date.now()}`;
+  // Create test product (its QR Code Number is generated automatically)
+  const testPanelNo = `NEON-${Date.now()}`;
   const prodInput = {
-    name: "Neon Test Product",
-    sku: testSku,
+    product_type: "Control Panel Unit",
+    control_panel_no: testPanelNo,
     category_id: createdCat.id,
     website_url: "https://neon.tech/test",
     brand: "Neon",
@@ -58,10 +58,11 @@ test("Neon DB connection and admin catalog integration", async () => {
   assert.ok(prodId > 0, "Product ID must be positive");
 
   // Search product
-  const searchRes = await listProducts(testSku);
-  assert.equal(searchRes.total, 1, "Should find 1 product matching SKU");
+  const searchRes = await listProducts(testPanelNo);
+  assert.equal(searchRes.total, 1, "Should find 1 product matching the panel number");
   const prod = searchRes.products[0];
-  assert.equal(prod.name, "Neon Test Product");
+  assert.equal(prod.name, "Control Panel Unit");
+  assert.match(prod.sku, /^[1-9]\d{15}$/);
   assert.ok(prod.serial.startsWith("PRD-"));
 
   // Check getProduct by public_id

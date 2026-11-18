@@ -999,6 +999,91 @@
 .registry .full-width {
   grid-column: 1/-1;
 }
+.registry input:disabled,
+.registry select:disabled {
+  background: #f3f4f6;
+  color: #6b7280;
+  cursor: not-allowed;
+}
+.registry .muted-text {
+  color: var(--muted);
+}
+.registry .block-text {
+  display: block;
+  margin-top: 2px;
+}
+/* Service Record: one row per service entry in the equipment form. */
+.registry .service-records {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+.registry .service-records legend {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 0 6px;
+}
+.registry .service-records > .secondary {
+  justify-self: start;
+}
+.registry .service-row {
+  display: grid;
+  grid-template-columns: 170px 1fr auto;
+  gap: 10px;
+  align-items: center;
+}
+/* Comments / Technical Notes: one card per note, each with its own images. */
+.registry .tech-notes {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+}
+.registry .tech-notes legend {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 0 6px;
+}
+.registry .tech-notes > .secondary {
+  justify-self: start;
+}
+.registry .tech-note {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+  background: #fafbfc;
+}
+.registry .tech-note-head {
+  display: grid;
+  grid-template-columns: auto 170px 1fr;
+  gap: 10px;
+  align-items: center;
+}
+.registry .tech-note-head .danger {
+  justify-self: end;
+}
+.registry .tech-note .image-previews {
+  margin-top: 0;
+}
+.registry .service-list {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 4px;
+}
+.registry .service-list span {
+  font-weight: 600;
+}
+@media (max-width: 640px) {
+  .registry .service-row {
+    grid-template-columns: 1fr;
+  }
+}
 .registry .modal-actions {
   display: flex;
   justify-content: flex-end;

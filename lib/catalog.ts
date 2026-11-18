@@ -1,4 +1,5 @@
-import { randomUUID } from "node:crypto";
+import { randomInt, randomUUID } from "node:crypto";
+import ExcelJS from "exceljs";
 import Papa from "papaparse";
 import * as xlsx from "xlsx";
 import {
@@ -9,23 +10,32 @@ import {
   queryOne,
   db,
 } from "./catalog-db";
+import {
+  COMPONENT_NUMBER_FIELD,
+  ELB_SET,
+  PRODUCT_TYPES,
+  RAILWAY_ZONES,
+  type ServiceRecord,
+  formatServiceRecords,
+  isCompleteElb,
+  isComponentType,
+  isValidIsoDate,
+  matchDivision,
+  matchProductType,
+  matchZone,
+  normalizeDate,
+  parseServiceRecords,
+  splitUnitNumbers,
+  underWarranty,
+  warrantyExpiry,
+} from "./railway";
 
 export { dataDir, db };
 
 export type Category = { id: string; name: string; count: number };
 
-export type RegistryOption = {
-  id: string;
-  category: "zone" | "division" | "elb_type" | "part_name" | string;
-  label: string;
-  value: string;
-  parent_value: string;
-  sort_order: number;
-};
-
 export type ProductInput = {
   name: string;
-  sku: string;
   category_id: string;
   brand: string;
   model: string;
@@ -33,28 +43,44 @@ export type ProductInput = {
   images: string[];
   manufacturing_date: string;
   website_url: string;
-  // Railway ELB & Equipment Specifications
+  // Railway equipment fields
+  product_type: string;
   zone: string;
   division: string;
   station_details: string;
+  /** The Complete ELB model a component belongs to (empty for standalone units). */
   elb_type: string;
+  /** Legacy field from the earlier form; no longer edited. */
   part_name: string;
   lc_gate_no: string;
   version_no: string;
   machine_no: string;
   pedestal_no: string;
   locking_no: string;
+  control_panel_no: string;
   date_of_supply: string;
   date_of_installation: string;
   date_of_commissioning: string;
+  /** Always calculated: 2 years from supply or 1 year from installation, whichever is earlier. */
   date_of_warranty_expiry: string;
+  /** Always calculated against today's date when the record is read. */
   under_warranty: string;
+  /** Legacy single comment; new entries go to technical_notes. */
   comments: string;
+  service_records: ServiceRecord[];
+  /** Comments / Technical Notes: separate entries, each with its own text and images. */
+  technical_notes: TechnicalNote[];
 };
+
+export type TechnicalNote = { date: string; text: string; images: string[] };
+
+const IMAGE_URL = /^\/api\/catalog\/images\/[a-f0-9-]+\.(png|jpg|webp)$/;
 
 export type Product = ProductInput & {
   id: number;
   public_id: string;
+  /** The QR Code Number: a random 16-digit number assigned once, never editable. */
+  sku: string;
   serial: string;
   category: string;
   active: number;
@@ -64,49 +90,82 @@ export type Product = ProductInput & {
 
 const key = (value: string) => value.trim().toLocaleLowerCase("en-US");
 export const serial = (id: number) => `PRD-${String(id).padStart(6, "0")}`;
+const DEFAULT_WEBSITE = "https://global-website.com";
 
-function hydrate(row: any): Product {
-  let images = row.images;
-  if (typeof images === "string") {
-    try {
-      images = JSON.parse(images);
-    } catch {
-      images = [];
-    }
+const parseJsonArray = (value: unknown): unknown[] => {
+  if (Array.isArray(value)) return value;
+  try {
+    const parsed = JSON.parse(String(value || "[]"));
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
   }
+};
+
+const isoTimestamp = (value: unknown) =>
+  typeof value === "object" && value ? (value as Date).toISOString() : String(value || "");
+
+/** Stored notes; an older record's single comment is shown as its first note. */
+function readNotes(value: unknown, legacyComment: string): TechnicalNote[] {
+  const notes = parseJsonArray(value).map((n) => {
+    const note = (n ?? {}) as Partial<TechnicalNote>;
+    return {
+      date: String(note.date ?? ""),
+      text: String(note.text ?? ""),
+      images: Array.isArray(note.images) ? note.images.filter((u): u is string => typeof u === "string") : [],
+    };
+  });
+  return legacyComment ? [{ date: "", text: legacyComment, images: [] }, ...notes] : notes;
+}
+
+const formatNotes = (notes: TechnicalNote[]) =>
+  notes.map((n) => [n.date, n.text].filter(Boolean).join(" - ")).join("\n");
+
+function hydrate(row: Record<string, unknown>): Product {
+  const text = (k: string) => String(row[k] ?? "");
+  const supply = text("date_of_supply");
+  const installation = text("date_of_installation");
+  const stored = text("date_of_warranty_expiry");
+  // Records without supply/installation dates (older entries) keep their stored expiry.
+  const expiry = warrantyExpiry(supply, installation) || (isValidIsoDate(stored) ? stored : "");
   return {
-    ...row,
+    ...(row as unknown as Product),
     id: Number(row.id),
     active: Number(row.active),
-    images: Array.isArray(images) ? images : [],
+    images: parseJsonArray(row.images).filter((u): u is string => typeof u === "string"),
     serial: serial(Number(row.id)),
-    zone: String(row.zone || ""),
-    division: String(row.division || ""),
-    station_details: String(row.station_details || ""),
-    elb_type: String(row.elb_type || ""),
-    part_name: String(row.part_name || ""),
-    lc_gate_no: String(row.lc_gate_no || ""),
-    version_no: String(row.version_no || ""),
-    machine_no: String(row.machine_no || ""),
-    pedestal_no: String(row.pedestal_no || ""),
-    locking_no: String(row.locking_no || ""),
-    date_of_supply: String(row.date_of_supply || ""),
-    date_of_installation: String(row.date_of_installation || ""),
-    date_of_commissioning: String(row.date_of_commissioning || ""),
-    date_of_warranty_expiry: String(row.date_of_warranty_expiry || ""),
-    under_warranty: String(row.under_warranty || ""),
-    comments: String(row.comments || ""),
-    created_at:
-      typeof row.created_at === "object" && row.created_at
-        ? row.created_at.toISOString()
-        : String(row.created_at || ""),
-    updated_at:
-      typeof row.updated_at === "object" && row.updated_at
-        ? row.updated_at.toISOString()
-        : String(row.updated_at || ""),
+    sku: text("sku"),
+    product_type: text("product_type"),
+    zone: text("zone"),
+    division: text("division"),
+    station_details: text("station_details"),
+    elb_type: text("elb_type"),
+    part_name: text("part_name"),
+    lc_gate_no: text("lc_gate_no"),
+    version_no: text("version_no"),
+    machine_no: text("machine_no"),
+    pedestal_no: text("pedestal_no"),
+    locking_no: text("locking_no"),
+    control_panel_no: text("control_panel_no"),
+    date_of_supply: supply,
+    date_of_installation: installation,
+    date_of_commissioning: text("date_of_commissioning"),
+    date_of_warranty_expiry: expiry,
+    under_warranty: underWarranty(expiry),
+    comments: text("comments"),
+    service_records: parseJsonArray(row.service_records).map((r) => ({
+      date: String((r as ServiceRecord)?.date ?? ""),
+      details: String((r as ServiceRecord)?.details ?? ""),
+    })),
+    technical_notes: readNotes(row.technical_notes, text("comments")),
+    created_at: isoTimestamp(row.created_at),
+    updated_at: isoTimestamp(row.updated_at),
   };
 }
 
+// -------------------------------------------------------------
+// Categories
+// -------------------------------------------------------------
 export async function ensureRailwayCategory(): Promise<string> {
   const name = "Railway Equipment";
   const nameKey = key(name);
@@ -121,14 +180,6 @@ export async function ensureRailwayCategory(): Promise<string> {
     [id, name, nameKey],
   );
   return id;
-}
-
-export async function ensureDefaultCategories(): Promise<string> {
-  const existing = await queryOne<{ id: string }>(
-    "SELECT id FROM categories LIMIT 1",
-  );
-  if (existing) return existing.id;
-  return ensureRailwayCategory();
 }
 
 export async function categories(): Promise<Category[]> {
@@ -182,354 +233,159 @@ export async function deleteCategory(id: string): Promise<void> {
 }
 
 // -------------------------------------------------------------
-// Dynamic Registry Options (Zones, Divisions, ELB Types, Parts)
+// QR Code Numbers
 // -------------------------------------------------------------
-export const DEFAULT_RAILWAY_ZONES_AND_DIVISIONS: {
-  zone: string;
-  divisions: string[];
-}[] = [
-  {
-    zone: "Central Railway (CR)",
-    divisions: ["Mumbai (CSMT)", "Bhusawal", "Pune", "Solapur", "Nagpur"],
-  },
-  {
-    zone: "Eastern Railway (ER)",
-    divisions: ["Howrah", "Sealdah", "Asansol", "Malda"],
-  },
-  {
-    zone: "East Central Railway (ECR)",
-    divisions: [
-      "Danapur",
-      "Dhanbad",
-      "Pt. Deen Dayal Upadhyay (DDU)",
-      "Samastipur",
-      "Sonpur",
-    ],
-  },
-  {
-    zone: "East Coast Railway (ECoR)",
-    divisions: ["Khurda Road", "Sambalpur", "Waltair"],
-  },
-  {
-    zone: "Northern Railway (NR)",
-    divisions: ["Delhi", "Ambala", "Firozpur", "Lucknow (NR)", "Moradabad"],
-  },
-  {
-    zone: "North Central Railway (NCR)",
-    divisions: ["Prayagraj (Allahabad)", "Agra", "Jhansi"],
-  },
-  {
-    zone: "North Eastern Railway (NER)",
-    divisions: ["Lucknow (NER)", "Izzatnagar", "Varanasi"],
-  },
-  {
-    zone: "Northeast Frontier Railway (NFR)",
-    divisions: ["Katihar", "Alipurduar", "Rangiya", "Lumding", "Tinsukia"],
-  },
-  {
-    zone: "North Western Railway (NWR)",
-    divisions: ["Jaipur", "Ajmer", "Bikaner", "Jodhpur"],
-  },
-  {
-    zone: "Southern Railway (SR)",
-    divisions: [
-      "Chennai",
-      "Madurai",
-      "Palakkad",
-      "Tiruchchirappalli",
-      "Thiruvananthapuram",
-      "Salem",
-    ],
-  },
-  {
-    zone: "South Central Railway (SCR)",
-    divisions: [
-      "Secunderabad",
-      "Hyderabad",
-      "Vijayawada",
-      "Guntakal",
-      "Guntur",
-      "Nanded",
-    ],
-  },
-  {
-    zone: "South Eastern Railway (SER)",
-    divisions: ["Kharagpur", "Adra", "Chakradharpur", "Ranchi"],
-  },
-  {
-    zone: "South East Central Railway (SECR)",
-    divisions: ["Bilaspur", "Raipur", "Nagpur (SECR)"],
-  },
-  {
-    zone: "South Western Railway (SWR)",
-    divisions: [
-      "Hubballi (Hubli)",
-      "Bengaluru (Bangalore)",
-      "Mysuru (Mysore)",
-    ],
-  },
-  {
-    zone: "Western Railway (WR)",
-    divisions: [
-      "Mumbai Central",
-      "Vadodara",
-      "Ahmedabad",
-      "Ratlam",
-      "Rajkot",
-      "Bhavnagar",
-    ],
-  },
-  {
-    zone: "West Central Railway (WCR)",
-    divisions: ["Jabalpur", "Bhopal", "Kota"],
-  },
-  {
-    zone: "Metro Railway, Kolkata",
-    divisions: ["Kolkata Metro"],
-  },
-  {
-    zone: "South Coast Railway (SCoR)",
-    divisions: ["Visakhapatnam", "Guntur", "Guntakal", "Rayagada"],
-  },
-  {
-    zone: "Konkan Railway (KR)",
-    divisions: ["Karwar", "Ratnagiri"],
-  },
-];
-
-export const DEFAULT_ELB_TYPES = [
-  "ELB 24V DC Standard",
-  "ELB 110V AC Standard",
-  "Heavy Duty Highway ELB",
-  "High Speed Barrier ELB",
-  "Solar Powered ELB",
-];
-
-export const DEFAULT_PART_NAMES = [
-  "Complete ELB Unit",
-  "Boom & Arm Assembly",
-  "Drive Motor & Gearbox Mechanism",
-  "Electronic Control Panel & Transmitter",
-  "Pedestal & Counterweight Assembly",
-  "Solenoid Locking & Latch Unit",
-  "Audio-Visual Flashing Warning Unit",
-  "Obstacle Sensor & Loop Detector",
-];
-
-export async function ensureDefaultOptions(): Promise<void> {
-  await ensureRailwayCategory();
-  const existing = await queryOne<{ id: string }>(
-    "SELECT id FROM registry_options LIMIT 1",
-  );
-  if (existing) return;
-
-  let sortOrder = 0;
-  // Seed Zones and Divisions
-  for (const item of DEFAULT_RAILWAY_ZONES_AND_DIVISIONS) {
-    const zoneId = randomUUID();
-    await execute(
-      "INSERT INTO registry_options (id, category, label, value, parent_value, sort_order) VALUES ($1, $2, $3, $4, $5, $6)",
-      [zoneId, "zone", item.zone, item.zone, "", sortOrder++],
-    );
-    for (const div of item.divisions) {
-      await execute(
-        "INSERT INTO registry_options (id, category, label, value, parent_value, sort_order) VALUES ($1, $2, $3, $4, $5, $6)",
-        [randomUUID(), "division", div, div, item.zone, sortOrder++],
-      );
-    }
-  }
-
-  // Seed ELB Types
-  for (const elb of DEFAULT_ELB_TYPES) {
-    await execute(
-      "INSERT INTO registry_options (id, category, label, value, parent_value, sort_order) VALUES ($1, $2, $3, $4, $5, $6)",
-      [randomUUID(), "elb_type", elb, elb, "", sortOrder++],
-    );
-  }
-
-  // Seed Part Names
-  for (const part of DEFAULT_PART_NAMES) {
-    await execute(
-      "INSERT INTO registry_options (id, category, label, value, parent_value, sort_order) VALUES ($1, $2, $3, $4, $5, $6)",
-      [randomUUID(), "part_name", part, part, "", sortOrder++],
-    );
-  }
+/** A random (not sequential) 16-digit QR Code Number. The first digit is never 0. */
+export function generateQrNumber(): string {
+  let value = String(randomInt(1, 10));
+  for (let i = 0; i < 15; i++) value += String(randomInt(0, 10));
+  return value;
 }
 
-export async function getRegistryOptions(
-  category?: string,
-): Promise<RegistryOption[]> {
-  await ensureDefaultOptions();
-  let sql =
-    "SELECT id, category, label, value, parent_value, sort_order FROM registry_options";
-  const params: unknown[] = [];
-  if (category) {
-    sql += " WHERE category=$1";
-    params.push(category);
-  }
-  sql += " ORDER BY sort_order ASC, label ASC";
-  const rows = await query<RegistryOption>(sql, params);
-  return rows.map((r) => ({
-    id: r.id,
-    category: r.category,
-    label: r.label,
-    value: r.value,
-    parent_value: r.parent_value || "",
-    sort_order: Number(r.sort_order || 0),
-  }));
-}
-
-export async function saveRegistryOption(option: {
-  id?: string;
-  category: string;
-  label: string;
-  value?: string;
-  parent_value?: string;
-  sort_order?: number;
-}): Promise<string> {
-  const category = String(option.category || "").trim();
-  const label = String(option.label || "").trim();
-  const val = String(option.value || label).trim();
-  const parentVal = String(option.parent_value || "").trim();
-  const sortOrder = Number(option.sort_order || 0);
-
-  if (!category || !label) {
-    throw new Error("Category and label are required for registry option.");
-  }
-
-  if (option.id) {
-    await execute(
-      "UPDATE registry_options SET label=$1, value=$2, parent_value=$3, sort_order=$4 WHERE id=$5",
-      [label, val, parentVal, sortOrder, option.id],
+async function uniqueQrNumber(): Promise<string> {
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const candidate = generateQrNumber();
+    const taken = await queryOne<{ id: number }>(
+      "SELECT id FROM products WHERE sku_key=$1",
+      [candidate],
     );
-    return option.id;
+    if (!taken) return candidate;
   }
-
-  const id = randomUUID();
-  await execute(
-    "INSERT INTO registry_options (id, category, label, value, parent_value, sort_order) VALUES ($1, $2, $3, $4, $5, $6)",
-    [id, category, label, val, parentVal, sortOrder],
-  );
-  return id;
-}
-
-export async function deleteRegistryOption(id: string): Promise<void> {
-  await execute("DELETE FROM registry_options WHERE id=$1", [id]);
+  throw new Error("Could not allocate a unique QR Code Number. Please try again.");
 }
 
 // -------------------------------------------------------------
 // Product Validation & Saving
 // -------------------------------------------------------------
+const TEXT_FIELDS = [
+  "name",
+  "category_id",
+  "brand",
+  "model",
+  "description",
+  "manufacturing_date",
+  "website_url",
+  "product_type",
+  "zone",
+  "division",
+  "station_details",
+  "elb_type",
+  "part_name",
+  "lc_gate_no",
+  "version_no",
+  "machine_no",
+  "pedestal_no",
+  "locking_no",
+  "control_panel_no",
+  "comments",
+] as const;
+
+const DATE_FIELDS = {
+  date_of_supply: "Date of Supply",
+  date_of_installation: "Date of Installation",
+  date_of_commissioning: "Date of Commissioning",
+} as const;
+
+/** Validates and normalises a record. Every field is optional. */
 export async function validateProduct(
-  raw: Partial<ProductInput>,
+  raw: Partial<Record<keyof ProductInput, unknown>>,
 ): Promise<ProductInput> {
   const input = {} as ProductInput;
-  for (const field of [
-    "name",
-    "sku",
-    "category_id",
-    "brand",
-    "model",
-    "description",
-    "manufacturing_date",
-    "website_url",
-    "zone",
-    "division",
-    "station_details",
-    "elb_type",
-    "part_name",
-    "lc_gate_no",
-    "version_no",
-    "machine_no",
-    "pedestal_no",
-    "locking_no",
-    "date_of_supply",
-    "date_of_installation",
-    "date_of_commissioning",
-    "date_of_warranty_expiry",
-    "under_warranty",
-    "comments",
-  ] as const) {
-    input[field] = String(raw[field] || "").trim();
-    if (input[field].length > (field === "description" ? 10000 : 2048))
-      throw new Error(`${field} is too long.`);
+  for (const field of TEXT_FIELDS) {
+    input[field] = String(raw[field] ?? "").trim();
+    if (input[field].length > (field === "description" || field === "comments" ? 10000 : 2048))
+      throw new Error(`${field.replace(/_/g, " ")} is too long.`);
   }
 
-  // If category is not set, fallback to default or create one
-  if (!input.category_id) {
-    input.category_id = await ensureDefaultCategories();
+  if (input.product_type) {
+    const type = matchProductType(input.product_type);
+    if (!type)
+      throw new Error(`Unknown Type of Product "${input.product_type}". Choose one from the list.`);
+    input.product_type = type;
   }
 
-  // Synthesize name if missing
-  if (!input.name) {
-    const parts = [
-      input.elb_type || "Electric Lifting Barrier",
-      input.part_name,
-      input.station_details || (input.lc_gate_no ? `LC Gate ${input.lc_gate_no}` : ""),
-    ].filter(Boolean);
-    input.name = parts.join(" - ") || "Railway ELB Equipment";
+  if (input.zone) {
+    const zone = matchZone(input.zone);
+    if (!zone) throw new Error(`Unknown Zonal Railway "${input.zone}". Choose one from the list.`);
+    input.zone = zone;
+  }
+  if (input.division) {
+    if (!input.zone)
+      throw new Error(`Choose the Zonal Railway for division "${input.division}".`);
+    const division = matchDivision(input.zone, input.division);
+    if (!division)
+      throw new Error(`Division "${input.division}" does not belong to ${input.zone}.`);
+    input.division = division;
   }
 
-  // Synthesize SKU if missing
-  if (!input.sku) {
-    input.sku = input.machine_no
-      ? `ELB-${input.machine_no}`
-      : `ELB-${randomUUID().slice(0, 8).toUpperCase()}`;
+  for (const [field, label] of Object.entries(DATE_FIELDS) as [keyof typeof DATE_FIELDS, string][]) {
+    const value = normalizeDate(raw[field]);
+    if (value === null)
+      throw new Error(`${label} "${String(raw[field])}" is not a valid date. Use DD-MM-YYYY.`);
+    input[field] = value;
+  }
+  input.date_of_warranty_expiry = warrantyExpiry(input.date_of_supply, input.date_of_installation);
+  input.under_warranty = underWarranty(input.date_of_warranty_expiry);
+
+  const records = Array.isArray(raw.service_records) ? raw.service_records : [];
+  if (records.length > 500) throw new Error("A record can hold at most 500 service entries.");
+  input.service_records = [];
+  for (const entry of records as Partial<ServiceRecord>[]) {
+    const details = String(entry?.details ?? "").trim();
+    const date = normalizeDate(entry?.date ?? "");
+    if (date === null) throw new Error(`Service record date "${String(entry?.date)}" is not a valid date.`);
+    if (details.length > 2000) throw new Error("Each service record must be under 2,000 characters.");
+    if (date || details) input.service_records.push({ date, details });
   }
 
-  // Default brand to GLOBAL if empty
-  if (!input.brand) {
-    input.brand = "GLOBAL";
+  // Comments / Technical Notes. The form sends the full list (which already includes any
+  // older single comment); imports send a Comments column, which becomes one note.
+  const rawNotes = Array.isArray(raw.technical_notes)
+    ? (raw.technical_notes as Partial<TechnicalNote>[])
+    : input.comments
+      ? [{ date: "", text: input.comments, images: [] }]
+      : [];
+  input.comments = "";
+  if (rawNotes.length > 200) throw new Error("A record can hold at most 200 technical notes.");
+  input.technical_notes = [];
+  for (const note of rawNotes) {
+    const text = String(note?.text ?? "").trim();
+    const date = normalizeDate(note?.date ?? "");
+    const images = Array.isArray(note?.images) ? note.images : [];
+    if (date === null) throw new Error(`Technical note date "${String(note?.date)}" is not a valid date.`);
+    if (text.length > 10000) throw new Error("Each technical note must be under 10,000 characters.");
+    if (images.length > 8 || images.some((u) => typeof u !== "string" || !IMAGE_URL.test(u)))
+      throw new Error("Each technical note can have up to eight uploaded images.");
+    if (text || images.length) input.technical_notes.push({ date, text, images });
   }
 
-  // Default website_url if empty
-  if (!input.website_url) {
-    input.website_url = "https://global-website.com";
-  }
+  // The product title is the Type of Product.
+  input.name = (input.product_type || input.name || "Railway Equipment").slice(0, 200);
 
-  if (input.sku.length > 120 || input.name.length > 200)
-    throw new Error(
-      "SKU must be under 121 characters and name under 201 characters.",
-    );
+  const category = input.category_id
+    ? await queryOne<{ id: string }>("SELECT id FROM categories WHERE id=$1", [input.category_id])
+    : undefined;
+  if (!category) input.category_id = await ensureRailwayCategory();
 
-  const cat = await queryOne<{ id: string }>(
-    "SELECT id FROM categories WHERE id=$1",
-    [input.category_id],
-  );
-  if (!cat) {
-    input.category_id = await ensureDefaultCategories();
-  }
-
+  input.brand ||= "GLOBAL";
+  input.website_url ||= DEFAULT_WEBSITE;
   let url: URL;
   try {
     url = new URL(input.website_url);
   } catch {
     throw new Error("Enter a valid website URL.");
   }
-
-  if (
-    !["http:", "https:"].includes(url.protocol) ||
-    url.username ||
-    url.password
-  )
+  if (!["http:", "https:"].includes(url.protocol) || url.username || url.password)
     throw new Error("Website URL must use HTTP or HTTPS without credentials.");
 
-  if (
-    input.manufacturing_date &&
-    (!/^\d{4}-\d{2}-\d{2}$/.test(input.manufacturing_date) ||
-      !Number.isFinite(Date.parse(input.manufacturing_date)) ||
-      new Date(input.manufacturing_date).toISOString().slice(0, 10) !==
-        input.manufacturing_date)
-  )
+  if (input.manufacturing_date && !isValidIsoDate(input.manufacturing_date))
     throw new Error("Manufacturing date must be a valid YYYY-MM-DD date.");
 
-  input.images = Array.isArray(raw.images) ? raw.images : [];
+  input.images = Array.isArray(raw.images) ? (raw.images as string[]) : [];
   if (
     input.images.length > 8 ||
     input.images.some(
-      (u) =>
-        typeof u !== "string" ||
-        !/^\/api\/catalog\/images\/[a-f0-9-]+\.(png|jpg|webp)$/.test(u),
+      (u) => typeof u !== "string" || !/^\/api\/catalog\/images\/[a-f0-9-]+\.(png|jpg|webp)$/.test(u),
     )
   )
     throw new Error("Use up to eight uploaded product images.");
@@ -537,88 +393,118 @@ export async function validateProduct(
   return input;
 }
 
+/**
+ * Turns one entry into the records that each get a QR code. A Complete ELB
+ * becomes 1 Control Panel Unit, 2 Locking Units and 2 Pedestal Units that
+ * share the machine number, location and dates.
+ */
+export function expandRecords(p: ProductInput): ProductInput[] {
+  if (!isCompleteElb(p.product_type)) return [p];
+  const pedestals = splitUnitNumbers(p.pedestal_no);
+  const lockings = splitUnitNumbers(p.locking_no);
+  if (pedestals.length > 2)
+    throw new Error("A Complete ELB has 2 Pedestal Units. Enter at most two Pedestal Numbers, separated by a comma.");
+  if (lockings.length > 2)
+    throw new Error("A Complete ELB has 2 Locking Units. Enter at most two Locking Numbers, separated by a comma.");
+  const numbers = { "Pedestal Unit": pedestals, "Locking Unit": lockings, "Control Panel Unit": [p.control_panel_no] };
+  return ELB_SET.map(({ type, index }) => ({
+    ...p,
+    product_type: type,
+    name: type,
+    elb_type: p.product_type,
+    pedestal_no: "",
+    locking_no: "",
+    control_panel_no: "",
+    [COMPONENT_NUMBER_FIELD[type]]: numbers[type][index] ?? "",
+  }));
+}
+
+const COLUMNS = [
+  "name",
+  "category_id",
+  "brand",
+  "model",
+  "description",
+  "images",
+  "manufacturing_date",
+  "website_url",
+  "zone",
+  "division",
+  "station_details",
+  "elb_type",
+  "part_name",
+  "lc_gate_no",
+  "version_no",
+  "machine_no",
+  "pedestal_no",
+  "locking_no",
+  "date_of_supply",
+  "date_of_installation",
+  "date_of_commissioning",
+  "date_of_warranty_expiry",
+  "under_warranty",
+  "comments",
+  "product_type",
+  "control_panel_no",
+  "service_records",
+  "technical_notes",
+] as const;
+
+const columnValues = (p: ProductInput) =>
+  COLUMNS.map((c) =>
+    c === "images" || c === "service_records" || c === "technical_notes" ? JSON.stringify(p[c]) : p[c],
+  );
+
+async function insertRecord(p: ProductInput): Promise<number> {
+  const n = COLUMNS.length;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const qr = await uniqueQrNumber();
+    try {
+      const row = await queryOne<{ id: number }>(
+        `INSERT INTO products (${COLUMNS.join(", ")}, sku, sku_key, public_id)
+         VALUES (${COLUMNS.map((_, i) => `$${i + 1}`).join(", ")}, $${n + 1}, $${n + 2}, $${n + 3})
+         RETURNING id`,
+        [...columnValues(p), qr, qr, randomUUID()],
+      );
+      if (!row) throw new Error("Failed to insert product.");
+      return Number(row.id);
+    } catch (e) {
+      // Another request took the same number between the check and the insert.
+      if (!/unique|duplicate/i.test(String((e as Error).message)) || attempt === 2) throw e;
+    }
+  }
+  throw new Error("Failed to insert product.");
+}
+
+/** Creates a new entry. Returns one id per QR code (five for a Complete ELB). */
+export async function createProducts(raw: Partial<Record<keyof ProductInput, unknown>>): Promise<number[]> {
+  const records = expandRecords(await validateProduct(raw));
+  const ids: number[] = [];
+  for (const record of records) ids.push(await insertRecord(record));
+  return ids;
+}
+
+/**
+ * Saves a record. Without an id it creates the entry (returning the first id);
+ * with an id it updates that record. The QR Code Number is never changed.
+ */
 export async function saveProduct(
-  raw: Partial<ProductInput>,
+  raw: Partial<Record<keyof ProductInput, unknown>>,
   id?: number,
 ): Promise<number> {
+  if (!id) return (await createProducts(raw))[0];
   const p = await validateProduct(raw);
-  const existing = await queryOne<{ id: number }>(
-    "SELECT id FROM products WHERE sku_key=$1 AND id!=$2",
-    [key(p.sku), id || 0],
-  );
-  if (existing)
+  if (isCompleteElb(p.product_type))
     throw new Error(
-      "This SKU / QR Code already exists, possibly on an inactive product.",
+      "A Complete ELB creates 5 QR codes, so it can only be added as a new entry. Choose this record's unit type instead.",
     );
-
-  const values = [
-    p.name,
-    p.sku,
-    key(p.sku),
-    p.category_id,
-    p.brand,
-    p.model,
-    p.description,
-    JSON.stringify(p.images),
-    p.manufacturing_date,
-    p.website_url,
-    p.zone,
-    p.division,
-    p.station_details,
-    p.elb_type,
-    p.part_name,
-    p.lc_gate_no,
-    p.version_no,
-    p.machine_no,
-    p.pedestal_no,
-    p.locking_no,
-    p.date_of_supply,
-    p.date_of_installation,
-    p.date_of_commissioning,
-    p.date_of_warranty_expiry,
-    p.under_warranty,
-    p.comments,
-  ];
-
-  if (id) {
-    const updateSql = isPostgres
-      ? `UPDATE products SET 
-          name=$1, sku=$2, sku_key=$3, category_id=$4, brand=$5, model=$6, description=$7, 
-          images=$8, manufacturing_date=$9, website_url=$10, zone=$11, division=$12, 
-          station_details=$13, elb_type=$14, part_name=$15, lc_gate_no=$16, version_no=$17, 
-          machine_no=$18, pedestal_no=$19, locking_no=$20, date_of_supply=$21, 
-          date_of_installation=$22, date_of_commissioning=$23, date_of_warranty_expiry=$24, 
-          under_warranty=$25, comments=$26, updated_at=NOW() 
-         WHERE id=$27 RETURNING id`
-      : `UPDATE products SET 
-          name=$1, sku=$2, sku_key=$3, category_id=$4, brand=$5, model=$6, description=$7, 
-          images=$8, manufacturing_date=$9, website_url=$10, zone=$11, division=$12, 
-          station_details=$13, elb_type=$14, part_name=$15, lc_gate_no=$16, version_no=$17, 
-          machine_no=$18, pedestal_no=$19, locking_no=$20, date_of_supply=$21, 
-          date_of_installation=$22, date_of_commissioning=$23, date_of_warranty_expiry=$24, 
-          under_warranty=$25, comments=$26, updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') 
-         WHERE id=$27 RETURNING id`;
-    const row = await queryOne<{ id: number }>(updateSql, [...values, id]);
-    if (!row) throw new Error("Product not found.");
-    return Number(row.id);
-  }
-
-  const insertSql = `INSERT INTO products (
-    name, sku, sku_key, category_id, brand, model, description, images, 
-    manufacturing_date, website_url, zone, division, station_details, elb_type, 
-    part_name, lc_gate_no, version_no, machine_no, pedestal_no, locking_no, 
-    date_of_supply, date_of_installation, date_of_commissioning, date_of_warranty_expiry, 
-    under_warranty, comments, public_id
-  ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, 
-    $18, $19, $20, $21, $22, $23, $24, $25, $26, $27
-  ) RETURNING id`;
-
-  const row = await queryOne<{ id: number }>(insertSql, [
-    ...values,
-    randomUUID(),
-  ]);
-  if (!row) throw new Error("Failed to insert product.");
+  const values = columnValues(p);
+  const row = await queryOne<{ id: number }>(
+    `UPDATE products SET ${COLUMNS.map((c, i) => `${c}=$${i + 1}`).join(", ")}, updated_at=NOW()
+     WHERE id=$${values.length + 1} RETURNING id`,
+    [...values, id],
+  );
+  if (!row) throw new Error("Product not found.");
   return Number(row.id);
 }
 
@@ -643,24 +529,24 @@ export async function listProducts(
   limit = 20,
 ) {
   const searchPattern = `%${queryParam}%`;
-  const serialExpr = isPostgres
-    ? "('PRD-' || LPAD(p.id::text, 6, '0'))"
-    : "printf('PRD-%06d', p.id)";
-  const likeOp = isPostgres ? "ILIKE" : "LIKE";
-
-  const where = ` WHERE (
-    p.name ${likeOp} $1 OR 
-    p.sku ${likeOp} $1 OR 
-    p.brand ${likeOp} $1 OR 
-    p.zone ${likeOp} $1 OR 
-    p.division ${likeOp} $1 OR 
-    p.station_details ${likeOp} $1 OR 
-    p.elb_type ${likeOp} $1 OR 
-    p.part_name ${likeOp} $1 OR 
-    p.lc_gate_no ${likeOp} $1 OR 
-    p.machine_no ${likeOp} $1 OR 
-    ${serialExpr} ${likeOp} $1
-  ) AND ($2='' OR p.category_id=$2) AND ($3='' OR p.active=$4)`;
+  const serialExpr = isPostgres ? "('PRD-' || LPAD(p.id::text, 6, '0'))" : "printf('PRD-%06d', p.id)";
+  const searchable = [
+    "p.name",
+    "p.sku",
+    "p.product_type",
+    "p.zone",
+    "p.division",
+    "p.station_details",
+    "p.elb_type",
+    "p.lc_gate_no",
+    "p.machine_no",
+    "p.pedestal_no",
+    "p.locking_no",
+    "p.control_panel_no",
+    serialExpr,
+  ];
+  const where = ` WHERE (${searchable.map((c) => `${c} ILIKE $1`).join(" OR ")})
+    AND ($2='' OR p.category_id=$2) AND ($3='' OR p.active=$4)`;
   const activeVal = status === "inactive" ? 0 : 1;
   const args = [searchPattern, category, status, activeVal];
 
@@ -711,16 +597,18 @@ export async function getImport(id: string) {
 }
 
 export async function setProductActive(id: number, active: boolean) {
-  const sql = isPostgres
-    ? "UPDATE products SET active=$1, updated_at=NOW() WHERE id=$2"
-    : "UPDATE products SET active=$1, updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=$2";
-  return execute(sql, [active ? 1 : 0, id]);
+  return execute("UPDATE products SET active=$1, updated_at=NOW() WHERE id=$2", [active ? 1 : 0, id]);
 }
 
+// -------------------------------------------------------------
+// Excel / CSV
+// -------------------------------------------------------------
 export type ImportRow = {
   row: number;
   status: "new" | "duplicate" | "invalid" | "created";
   message: string;
+  /** QR codes this row creates (or would create): 5 for a Complete ELB, otherwise 1. */
+  qrCodes: number;
   data: Record<string, string>;
 };
 
@@ -730,215 +618,171 @@ export type ImportResult = {
   created: number;
   duplicates: number;
   invalid: number;
+  /** QR codes created (after import) or to be created (in a preview). */
+  qrCodes: number;
   rows: ImportRow[];
 };
 
-export const masterExcelHeaders = [
-  "S.No",
-  "QR Code Number",
+/** The Master Sheet columns, in the order the client's team maintains them. */
+export const MASTER_HEADERS = [
+  "Machine No.",
+  "Type of Product",
+  "Pedestal No.",
+  "Locking No.",
+  "Control Panel No.",
   "Zonal Railway",
   "Division",
-  "Station Details",
-  "Type of ELB",
-  "Part Name",
-  "LC Gate No.",
+  "Nearby Station",
   "Version No.",
-  "Machine No.",
-  "Pedestal No.",
-  "Locking Number",
   "Date of Supply",
   "Date of Installation",
   "Date of Commissioning",
   "Date of Warranty Expiry",
+  "Service Record",
+] as const;
+
+/** Extra columns in exports; ignored when the file is imported again. */
+const EXPORT_HEADERS = [
+  "QR Code Number",
   "Under Warranty?",
+  "ELB Model",
+  "LC Gate No.",
   "Comments",
-];
+  "Public QR Link",
+  "Status",
+] as const;
 
-export const standardProductHeaders = [
-  "Product Name",
-  "SKU",
-  "Category",
-  "Brand",
-  "Model",
-  "Description",
-  "Manufacturing Date",
-  "Website URL",
-  ...masterExcelHeaders.slice(2),
-];
+/** Header names from the earlier template, still accepted on import. */
+const HEADER_ALIASES: Record<string, string[]> = {
+  "Machine No.": ["Machine No", "Machine Number"],
+  "Type of Product": ["Product Type", "Type of ELB", "Product Name"],
+  "Pedestal No.": ["Pedestal No", "Pedestal Number"],
+  "Locking No.": ["Locking No", "Locking Number"],
+  "Control Panel No.": ["Control Panel No", "Control Panel Number"],
+  "Zonal Railway": ["Zone", "Railway Zone"],
+  Division: ["District", "Division / District"],
+  "Nearby Station": ["Station Details", "Station", "Near By Station"],
+  "Version No.": ["Version No", "Version"],
+  "Date of Supply": ["Supply Date"],
+  "Date of Installation": ["Installation Date"],
+  "Date of Commissioning": ["Commissioning Date"],
+  "Service Record": ["Service Records", "Service History"],
+  "QR Code Number": ["QR Code No.", "QR Code", "SKU"],
+  "LC Gate No.": ["LC Gate No", "Gate No."],
+  Comments: ["Comments / Technical Notes", "Remarks"],
+};
 
-export function template(kind: string, format = "csv"): string | Buffer {
-  if (kind === "categories") {
-    return Papa.unparse([["Category Name"]]);
+/** Columns that are calculated or informational; a row containing only these is treated as empty. */
+const COMPUTED_HEADERS = new Set(
+  ["s.no", "date of warranty expiry", "under warranty?", "under warranty", "public qr link", "status", "qr code number"],
+);
+
+function pick(row: Record<string, string>, header: string): string {
+  const lookup = new Map(Object.entries(row).map(([k, v]) => [k.trim().toLowerCase(), v]));
+  for (const name of [header, ...(HEADER_ALIASES[header] ?? [])]) {
+    const value = lookup.get(name.toLowerCase());
+    if (value !== undefined && String(value).trim()) return String(value).trim();
   }
-  if (format === "xlsx") {
-    const wb = xlsx.utils.book_new();
-    const wsData = [
-      masterExcelHeaders,
-      [
-        "1",
-        "ELB-QR-0001",
-        "Northern Railway (NR)",
-        "Delhi",
-        "New Delhi Station Yard",
-        "ELB 24V DC Standard",
-        "Complete ELB Unit",
-        "LC-42",
-        "v2.4",
-        "MCH-9921",
-        "PED-04",
-        "LCK-110",
-        "2025-01-15",
-        "2025-02-01",
-        "2025-02-10",
-        "2028-02-10",
-        "Yes",
-        "Supplied and commissioned per RDSO specifications",
-      ],
-    ];
-    const ws = xlsx.utils.aoa_to_sheet(wsData);
-    xlsx.utils.book_append_sheet(wb, ws, "Master Sheet");
-    return xlsx.write(wb, { type: "buffer", bookType: "xlsx" });
-  }
-  return Papa.unparse([masterExcelHeaders]);
+  return "";
 }
 
-/**
- * Normalizes input row fields from either Excel (Master Sheet) or CSV
- */
-function normalizeImportRow(raw: Record<string, string>): Record<string, string> {
-  const norm: Record<string, string> = {};
-  for (const [k, v] of Object.entries(raw)) {
-    const cleanK = k.trim();
-    norm[cleanK] = String(v ?? "").trim();
-  }
-
-  // Map master sheet variations
-  const qrCodeNum =
-    norm["QR Code Number"] ||
-    norm["QR Code No."] ||
-    norm["QR Code"] ||
-    norm["SKU"] ||
-    norm["Product Code"] ||
-    "";
-  const zone = norm["Zonal Railway"] || norm["Zone"] || "";
-  const division = norm["Division"] || norm["District"] || "";
-  const station = norm["Station Details"] || norm["Station"] || "";
-  const elbType = norm["Type of ELB"] || norm["ELB Type"] || norm["Model"] || "";
-  const partName = norm["Part Name"] || norm["Part"] || "";
-  const lcGate = norm["LC Gate No."] || norm["LC Gate No"] || norm["Gate No."] || "";
-  const version = norm["Version No."] || norm["Version"] || "";
-  const machineNo = norm["Machine No."] || norm["Machine No"] || "";
-  const pedestalNo = norm["Pedestal No."] || norm["Pedestal No"] || "";
-  const lockingNo = norm["Locking Number"] || norm["Locking No."] || norm["Locking No"] || "";
-  const supplyDate = norm["Date of Supply"] || norm["Supply Date"] || "";
-  const installDate = norm["Date of Installation"] || norm["Installation Date"] || "";
-  const commDate = norm["Date of Commissioning"] || norm["Commissioning Date"] || "";
-  const warrantyExpiry = norm["Date of Warranty Expiry"] || norm["Warranty Expiry"] || "";
-  const underWarranty = norm["Under Warranty?"] || norm["Under Warranty"] || "";
-  const comments = norm["Comments"] || norm["Remarks"] || "";
-
-  let productName = norm["Product Name"] || norm["Name"] || "";
-  if (!productName && (elbType || partName || zone || lcGate || station)) {
-    const nameParts = [
-      elbType || "ELB",
-      partName,
-      station || (lcGate ? `Gate ${lcGate}` : ""),
-    ].filter(Boolean);
-    productName = nameParts.join(" - ") || "Railway Equipment";
-  }
-
-  const sku = qrCodeNum || (machineNo ? `ELB-${machineNo}` : "");
-
+function readImportRow(raw: Record<string, string>) {
+  const typeCell = pick(raw, "Type of Product");
+  const productType = matchProductType(typeCell);
+  const data: Record<string, string> = {};
+  for (const h of [...MASTER_HEADERS, "QR Code Number", "LC Gate No.", "Comments"]) data[h] = pick(raw, h);
   return {
-    "Product Name": productName,
-    SKU: sku,
-    Category: norm["Category"] || (zone || elbType ? "Railway Equipment" : ""),
-    Brand: norm["Brand"] || "GLOBAL",
-    Model: norm["Model"] || elbType || "",
-    Description: norm["Description"] || comments || "",
-    "Manufacturing Date": norm["Manufacturing Date"] || supplyDate || "",
-    "Website URL":
-      norm["Website URL"] ||
-      (zone || elbType ? "https://global-website.com" : ""),
-    Zone: zone,
-    Division: division,
-    "Station Details": station,
-    "Type of ELB": elbType,
-    "Part Name": partName,
-    "LC Gate No.": lcGate,
-    "Version No.": version,
-    "Machine No.": machineNo,
-    "Pedestal No.": pedestalNo,
-    "Locking Number": lockingNo,
-    "Date of Supply": supplyDate,
-    "Date of Installation": installDate,
-    "Date of Commissioning": commDate,
-    "Date of Warranty Expiry": warrantyExpiry,
-    "Under Warranty?": underWarranty,
-    Comments: comments,
+    data,
+    qrCode: pick(raw, "QR Code Number"),
+    input: {
+      // Unrecognised types are passed through so validation reports them.
+      product_type: productType || typeCell,
+      machine_no: data["Machine No."],
+      pedestal_no: data["Pedestal No."],
+      locking_no: data["Locking No."],
+      control_panel_no: data["Control Panel No."],
+      zone: data["Zonal Railway"],
+      division: data.Division,
+      station_details: data["Nearby Station"],
+      version_no: data["Version No."],
+      date_of_supply: data["Date of Supply"],
+      date_of_installation: data["Date of Installation"],
+      date_of_commissioning: data["Date of Commissioning"],
+      service_records: parseServiceRecords(data["Service Record"]),
+      lc_gate_no: data["LC Gate No."],
+      comments: data.Comments,
+      elb_type: pick(raw, "ELB Model"),
+    } satisfies Partial<Record<keyof ProductInput, unknown>>,
   };
+}
+
+/** Identifies a unit so the same equipment is not imported twice. */
+function identityKey(p: ProductInput): { key: string; sql: string; params: unknown[] } | null {
+  if (isCompleteElb(p.product_type) && p.machine_no) {
+    return {
+      key: `elb|${key(p.machine_no)}`,
+      sql: "SELECT id FROM products WHERE elb_type<>'' AND LOWER(machine_no)=$1 LIMIT 1",
+      params: [key(p.machine_no)],
+    };
+  }
+  if (isComponentType(p.product_type)) {
+    const field = COMPONENT_NUMBER_FIELD[p.product_type];
+    const number = p[field];
+    if (!number) return null;
+    return {
+      key: `${p.product_type}|${key(number)}`,
+      sql: `SELECT id FROM products WHERE product_type=$1 AND LOWER(${field})=$2 LIMIT 1`,
+      params: [p.product_type, key(number)],
+    };
+  }
+  return null;
 }
 
 export async function parseSpreadsheetData(
   input: string | Buffer,
   isBinary = false,
 ): Promise<Record<string, string>[]> {
-  if (isBinary || (typeof input !== "string" && Buffer.isBuffer(input))) {
+  if (isBinary || Buffer.isBuffer(input)) {
     const buf = Buffer.isBuffer(input) ? input : Buffer.from(input, "base64");
     const wb = xlsx.read(buf, { type: "buffer" });
-    const sheetName = wb.SheetNames[0];
-    const ws = wb.Sheets[sheetName];
-    const rawRows = xlsx.utils.sheet_to_json<any[]>(ws, { header: 1, defval: "" });
-    if (!rawRows || rawRows.length === 0) return [];
+    const sheetName = wb.SheetNames.find((n) => n.trim().toLowerCase() === "master sheet") ?? wb.SheetNames[0];
+    const rawRows = xlsx.utils.sheet_to_json<unknown[]>(wb.Sheets[sheetName], { header: 1, defval: "" });
+    if (!rawRows.length) return [];
 
-    // Find the header row (detect row that contains "QR Code Number" or "Zonal Railway" or "Product Name" or "Category Name")
+    // The header row may follow a few hint rows.
     let headerRowIndex = 0;
     for (let i = 0; i < Math.min(10, rawRows.length); i++) {
-      const row = rawRows[i] || [];
-      const rowText = row.map((c) => String(c).trim().toLowerCase()).join(" ");
+      const rowText = (rawRows[i] || []).map((c) => String(c).trim().toLowerCase()).join("|");
       if (
-        rowText.includes("qr code") ||
-        rowText.includes("zonal railway") ||
-        rowText.includes("product name") ||
-        rowText.includes("category name") ||
-        rowText.includes("s.no")
+        ["machine no", "type of product", "zonal railway", "qr code", "category name"].some((h) =>
+          rowText.includes(h),
+        )
       ) {
         headerRowIndex = i;
         break;
       }
     }
 
-    const headers = (rawRows[headerRowIndex] || []).map((h: any) => String(h).trim());
+    const headers = (rawRows[headerRowIndex] || []).map((h) => String(h).trim());
     const dataRows: Record<string, string>[] = [];
     for (let i = headerRowIndex + 1; i < rawRows.length; i++) {
       const row = rawRows[i];
       if (!row || row.length === 0) continue;
       const rowObj: Record<string, string> = {};
       let hasData = false;
-      headers.forEach((h: string, colIdx: number) => {
+      headers.forEach((h, colIdx) => {
         if (!h) return;
         const val = String(row[colIdx] ?? "").trim();
         rowObj[h] = val;
-        // Ignore row if it only has S.No or row number without any actual equipment data
-        if (val && h !== "S.No" && h !== "") {
-          hasData = true;
-        }
+        if (val && !COMPUTED_HEADERS.has(h.toLowerCase())) hasData = true;
       });
-      if (hasData) {
-        dataRows.push(rowObj);
-      }
+      if (hasData) dataRows.push(rowObj);
     }
     return dataRows;
   }
 
-  // Handle CSV
-  const csvText =
-    typeof input === "string"
-      ? input
-      : Buffer.isBuffer(input)
-        ? (input as Buffer).toString("utf-8")
-        : String(input);
-  const parsed = Papa.parse<Record<string, string>>(csvText.replace(/^\uFEFF/, ""), {
+  const csvText = typeof input === "string" ? input : String(input);
+  const parsed = Papa.parse<Record<string, string>>(csvText.replace(/^﻿/, ""), {
     header: true,
     delimiter: ",",
     skipEmptyLines: "greedy",
@@ -957,191 +801,86 @@ export async function importSpreadsheet(
     throw new Error("Choose products or categories.");
 
   const rawData = await parseSpreadsheetData(input, isBinary);
-  if (rawData.length === 0) {
-    throw new Error("No valid data rows found in the uploaded file.");
-  }
+  if (rawData.length === 0) throw new Error("No valid data rows found in the uploaded file.");
+  if (rawData.length > 5000) throw new Error("Import at most 5,000 rows per file.");
 
-  const sampleRowKeys = Object.keys(rawData[0] || {}).map((k) =>
-    k.trim(),
-  );
-  const sampleRowKeysLower = sampleRowKeys.map((k) => k.toLowerCase());
-
-  let isRailwaySheet = false;
+  const headers = Object.keys(rawData[0] || {}).map((k) => k.trim().toLowerCase());
   if (kind === "categories") {
-    if (!sampleRowKeys.includes("Category Name")) {
-      throw new Error("Required headers: Category Name.");
-    }
-  } else if (kind === "products") {
-    isRailwaySheet = sampleRowKeysLower.some(
-      (k) =>
-        k.includes("zonal railway") ||
-        k.includes("type of elb") ||
-        k.includes("qr code number") ||
-        k.includes("lc gate no") ||
-        k.includes("station details"),
-    );
-
-    if (isRailwaySheet) {
-      await ensureRailwayCategory();
-    } else {
-      const standardReq = [
-        "Product Name",
-        "SKU",
-        "Category",
-        "Website URL",
-      ];
-      if (standardReq.some((h) => !sampleRowKeys.includes(h))) {
-        throw new Error(
-          `Required headers: ${standardReq.join(", ")}.`,
-        );
-      }
-    }
+    if (!headers.includes("category name")) throw new Error("Required headers: Category Name.");
+  } else {
+    const known = MASTER_HEADERS.flatMap((h) => [h, ...(HEADER_ALIASES[h] ?? [])]).map((h) => h.toLowerCase());
+    if (!headers.some((h) => known.includes(h)))
+      throw new Error(`Use the Excel template. Expected columns: ${MASTER_HEADERS.join(", ")}.`);
   }
 
-  if (rawData.length > 5000)
-    throw new Error("Import at most 5,000 rows per file.");
-
-  const defaultCatId = await ensureDefaultCategories();
   const seen = new Set<string>();
   const rows: ImportRow[] = [];
-  const categoryCache = new Map<string, string>();
 
   for (let index = 0; index < rawData.length; index++) {
     const rawRow = rawData[index];
-    const normalized = kind === "categories" ? rawRow : normalizeImportRow(rawRow);
-    const row: ImportRow = {
-      row: index + 1,
-      status: "new",
-      message: "Ready to import",
-      data: normalized,
-    };
+    const row: ImportRow = { row: index + 1, status: "new", message: "Ready to import", qrCodes: 0, data: rawRow };
 
     try {
-      const identity = key(
-        kind === "categories"
-          ? normalized["Category Name"] || normalized["Name"] || ""
-          : normalized.SKU || normalized["QR Code Number"] || "",
-      );
-
-      if (!identity) {
-        throw new Error(
-          kind === "categories"
-            ? "Category name is required."
-            : "SKU is required.",
-        );
-      }
-
-      const existing =
-        kind === "categories"
-          ? await queryOne<{ id: string }>(
-              "SELECT id FROM categories WHERE name_key=$1",
-              [identity],
-            )
-          : await queryOne<{ id: number }>(
-              "SELECT id FROM products WHERE sku_key=$1",
-              [identity],
-            );
-
-      if (seen.has(identity) || existing) {
-        row.status = "duplicate";
-        row.message = "Already exists; skipped.";
+      if (kind === "categories") {
+        const name = String(rawRow["Category Name"] || "").trim();
+        if (!name || name.length > 120) throw new Error("Category name must contain 1–120 characters.");
+        const identity = key(name);
+        const existing = await queryOne<{ id: string }>("SELECT id FROM categories WHERE name_key=$1", [identity]);
+        if (seen.has(identity) || existing) {
+          row.status = "duplicate";
+          row.message = "Already exists; skipped.";
+        } else {
+          seen.add(identity);
+          if (commit) {
+            await saveCategory(name);
+            row.status = "created";
+            row.message = "Added successfully.";
+          }
+        }
         rows.push(row);
         continue;
       }
 
-      if (kind === "categories") {
-        const catName = normalized["Category Name"] || normalized["Name"];
-        if (!catName || catName.length > 120)
-          throw new Error("Category name must contain 1–120 characters.");
-        if (commit) await saveCategory(catName);
-      } else {
-        const rawCategory = String(rawRow["Category"] || rawRow["category"] || "").trim();
-        const isRailway =
-          isRailwaySheet ||
-          Boolean(
-            rawRow["Zonal Railway"] ||
-            rawRow["Zone"] ||
-            rawRow["Type of ELB"] ||
-            rawRow["ELB Type"] ||
-            rawRow["Station Details"] ||
-            rawRow["LC Gate No."]
-          );
-        const categoryName = normalized.Category || (isRailway ? "Railway Equipment" : "");
-        let categoryId = defaultCatId;
+      const parsed = readImportRow(rawRow);
+      row.data = parsed.data;
 
-        if (categoryName) {
-          const catKey = key(categoryName);
-          let foundId = categoryCache.get(catKey);
-
-          if (!foundId) {
-            const category = await queryOne<{ id: string }>(
-              "SELECT id FROM categories WHERE name_key=$1",
-              [catKey],
-            );
-            if (category) {
-              foundId = category.id;
-              categoryCache.set(catKey, foundId);
-            }
-          }
-
-          if (!foundId) {
-            if (isRailway || !rawCategory) {
-              if (commit) {
-                const newCatId = randomUUID();
-                await execute(
-                  "INSERT INTO categories (id, name, name_key) VALUES ($1, $2, $3)",
-                  [newCatId, categoryName, catKey],
-                );
-                foundId = newCatId;
-                categoryCache.set(catKey, newCatId);
-              } else {
-                foundId = defaultCatId;
-              }
-            } else {
-              throw new Error("Category does not exist. Import or create it first.");
-            }
-          }
-
-          categoryId = foundId;
+      // Re-importing an export: rows that already carry a registered QR Code Number are skipped.
+      if (parsed.qrCode) {
+        const existing = await queryOne<{ id: number }>("SELECT id FROM products WHERE sku_key=$1", [key(parsed.qrCode)]);
+        if (existing) {
+          row.status = "duplicate";
+          row.message = "QR Code Number already registered; skipped.";
+          rows.push(row);
+          continue;
         }
-
-        const inputData = await validateProduct({
-          name: normalized["Product Name"],
-          sku: normalized.SKU,
-          category_id: categoryId,
-          brand: normalized.Brand || "GLOBAL",
-          model: normalized.Model,
-          description: normalized.Description,
-          manufacturing_date: normalized["Manufacturing Date"],
-          website_url: normalized["Website URL"] || "https://global-website.com",
-          zone: normalized.Zone,
-          division: normalized.Division,
-          station_details: normalized["Station Details"],
-          elb_type: normalized["Type of ELB"],
-          part_name: normalized["Part Name"],
-          lc_gate_no: normalized["LC Gate No."],
-          version_no: normalized["Version No."],
-          machine_no: normalized["Machine No."],
-          pedestal_no: normalized["Pedestal No."],
-          locking_no: normalized["Locking Number"],
-          date_of_supply: normalized["Date of Supply"],
-          date_of_installation: normalized["Date of Installation"],
-          date_of_commissioning: normalized["Date of Commissioning"],
-          date_of_warranty_expiry: normalized["Date of Warranty Expiry"],
-          under_warranty: normalized["Under Warranty?"],
-          comments: normalized.Comments,
-        });
-
-        if (commit) await saveProduct(inputData);
       }
 
-      seen.add(identity);
+      const product = await validateProduct(parsed.input);
+      const records = expandRecords(product);
+      const identity = identityKey(product);
+      if (identity) {
+        const existing = await queryOne<{ id: number }>(identity.sql, identity.params);
+        if (seen.has(identity.key) || existing) {
+          row.status = "duplicate";
+          row.message = isCompleteElb(product.product_type)
+            ? `Machine No. ${product.machine_no} is already registered; skipped.`
+            : "This unit number is already registered; skipped.";
+          rows.push(row);
+          continue;
+        }
+        seen.add(identity.key);
+      }
+
+      row.qrCodes = records.length;
+      row.message = records.length > 1 ? `Ready: creates ${records.length} QR codes` : "Ready to import";
       if (commit) {
+        for (const record of records) await insertRecord(record);
         row.status = "created";
-        row.message = "Added successfully.";
+        row.message = records.length > 1 ? `Added: ${records.length} QR codes created` : "Added successfully.";
       }
     } catch (e) {
       row.status = "invalid";
+      row.qrCodes = 0;
       row.message = e instanceof Error ? e.message : "Invalid row.";
     }
     rows.push(row);
@@ -1152,101 +891,60 @@ export async function importSpreadsheet(
     created: rows.filter((r) => r.status === "created").length,
     duplicates: rows.filter((r) => r.status === "duplicate").length,
     invalid: rows.filter((r) => r.status === "invalid").length,
+    qrCodes: rows.reduce((sum, r) => sum + (r.status === "invalid" || r.status === "duplicate" ? 0 : r.qrCodes), 0),
     rows,
   };
 
   if (commit) {
     result.id = randomUUID();
-    await execute(
-      "INSERT INTO imports (id, kind, result) VALUES ($1, $2, $3)",
-      [result.id, kind, JSON.stringify(result)],
-    );
+    await execute("INSERT INTO imports (id, kind, result) VALUES ($1, $2, $3)", [
+      result.id,
+      kind,
+      JSON.stringify(result),
+    ]);
   }
-
   return result;
 }
 
-export async function importCsv(
-  csv: string,
-  kind: string,
-  commit = false,
-): Promise<ImportResult> {
+export async function importCsv(csv: string, kind: string, commit = false): Promise<ImportResult> {
   return importSpreadsheet(csv, kind, commit, false);
+}
+
+/** One export row in Master Sheet order followed by the export-only columns. */
+function exportRow(p: Product, origin: string): string[] {
+  return [
+    p.machine_no,
+    p.product_type || p.elb_type,
+    p.pedestal_no,
+    p.locking_no,
+    p.control_panel_no,
+    p.zone,
+    p.division,
+    p.station_details,
+    p.version_no,
+    p.date_of_supply,
+    p.date_of_installation,
+    p.date_of_commissioning,
+    p.date_of_warranty_expiry,
+    formatServiceRecords(p.service_records),
+    p.sku,
+    p.under_warranty,
+    p.product_type ? p.elb_type : "",
+    p.lc_gate_no,
+    formatNotes(p.technical_notes),
+    `${origin}/p/${p.public_id}`,
+    p.active ? "Active" : "Inactive",
+  ];
 }
 
 export async function exportCsv(kind: string, origin: string): Promise<string> {
   if (kind === "categories") {
     const cats = await categories();
-    return Papa.unparse(
-      { fields: ["Category Name"], data: cats.map((c) => [c.name]) },
-      { escapeFormulae: true },
-    );
+    return Papa.unparse({ fields: ["Category Name"], data: cats.map((c) => [c.name]) }, { escapeFormulae: true });
   }
-  const rows = await query(`${select} ORDER BY p.id`);
-  const products = rows.map(hydrate);
+  const products = (await query(`${select} ORDER BY p.id`)).map(hydrate);
   return Papa.unparse(
-    {
-      fields: [
-        "Product Name",
-        "SKU",
-        "Category",
-        "Brand",
-        "Model",
-        "Description",
-        "Manufacturing Date",
-        "Website URL",
-        "Zonal Railway",
-        "Division",
-        "Station Details",
-        "Type of ELB",
-        "Part Name",
-        "LC Gate No.",
-        "Version No.",
-        "Machine No.",
-        "Pedestal No.",
-        "Locking Number",
-        "Date of Supply",
-        "Date of Installation",
-        "Date of Commissioning",
-        "Date of Warranty Expiry",
-        "Under Warranty?",
-        "Comments",
-        "Serial Number",
-        "Status",
-        "QR URL",
-        "Image URLs",
-      ],
-      data: products.map((p) => [
-        p.name,
-        p.sku,
-        p.category,
-        p.brand,
-        p.model,
-        p.description,
-        p.manufacturing_date,
-        p.website_url,
-        p.zone,
-        p.division,
-        p.station_details,
-        p.elb_type,
-        p.part_name,
-        p.lc_gate_no,
-        p.version_no,
-        p.machine_no,
-        p.pedestal_no,
-        p.locking_no,
-        p.date_of_supply,
-        p.date_of_installation,
-        p.date_of_commissioning,
-        p.date_of_warranty_expiry,
-        p.under_warranty,
-        p.comments,
-        p.serial,
-        p.active ? "Active" : "Inactive",
-        `${origin}/p/${p.public_id}`,
-        p.images.join("|"),
-      ]),
-    },
+    { fields: [...MASTER_HEADERS, ...EXPORT_HEADERS], data: products.map((p) => exportRow(p, origin)) },
     { escapeFormulae: true },
   );
 }
@@ -1255,61 +953,178 @@ export async function exportXlsx(kind: string, origin: string): Promise<Buffer> 
   if (kind === "categories") {
     const cats = await categories();
     const wb = xlsx.utils.book_new();
-    const ws = xlsx.utils.aoa_to_sheet([["Category Name"], ...cats.map((c) => [c.name])]);
-    xlsx.utils.book_append_sheet(wb, ws, "Categories");
+    xlsx.utils.book_append_sheet(wb, xlsx.utils.aoa_to_sheet([["Category Name"], ...cats.map((c) => [c.name])]), "Categories");
     return xlsx.write(wb, { type: "buffer", bookType: "xlsx" });
   }
+  const products = (await query(`${select} ORDER BY p.id`)).map(hydrate);
+  return buildMasterWorkbook(products, origin);
+}
 
-  const rows = await query(`${select} ORDER BY p.id`);
-  const products = rows.map(hydrate);
-  const wb = xlsx.utils.book_new();
-  const wsData = [
-    [
-      "S.No",
-      "QR Code Number",
-      "Zonal Railway",
+export async function template(kind: string, format = "xlsx"): Promise<string | Buffer> {
+  if (kind === "categories") return Papa.unparse([["Category Name"]]);
+  if (format === "xlsx") return buildMasterWorkbook([], "");
+  return Papa.unparse([[...MASTER_HEADERS]]);
+}
+
+// -------------------------------------------------------------
+// Master Sheet workbook (template and export)
+// -------------------------------------------------------------
+const DATE_FORMAT = "dd-mm-yyyy";
+const toExcelDate = (value: string) => (isValidIsoDate(value) ? new Date(`${value}T00:00:00Z`) : null);
+
+/**
+ * Builds the Master Sheet with dropdowns for Type of Product, Zonal Railway and
+ * Division (Division lists only the divisions of the chosen zone), date checks
+ * on the date columns, and a formula for the warranty expiry.
+ */
+async function buildMasterWorkbook(products: Product[], origin: string): Promise<Buffer> {
+  const exporting = products.length > 0 || Boolean(origin);
+  const headers: string[] = exporting ? [...MASTER_HEADERS, ...EXPORT_HEADERS] : [...MASTER_HEADERS];
+  const lastRow = Math.max(1000, products.length + 500) + 1;
+
+  const wb = new ExcelJS.Workbook();
+  wb.creator = "GLOBAL Railway Product Registry";
+  const ws = wb.addWorksheet("Master Sheet", { views: [{ state: "frozen", ySplit: 1 }] });
+  const help = wb.addWorksheet("Instructions");
+  const lists = wb.addWorksheet("Lists", { state: "veryHidden" });
+
+  // --- Hidden lists used by the dropdowns ---
+  lists.getCell("A1").value = "Type of Product";
+  PRODUCT_TYPES.forEach((t, i) => (lists.getCell(i + 2, 1).value = t));
+  lists.getCell("B1").value = "Zonal Railway";
+  lists.getCell("C1").value = "Division list";
+  RAILWAY_ZONES.forEach((z, i) => {
+    const name = `DIV_${z.code.toUpperCase()}`;
+    const column = lists.getColumn(i + 5);
+    lists.getCell(i + 2, 2).value = z.zone;
+    lists.getCell(i + 2, 3).value = name;
+    column.header = z.code;
+    z.divisions.forEach((d, j) => (lists.getCell(j + 2, i + 5).value = d));
+    wb.definedNames.add(`'Lists'!$${column.letter}$2:$${column.letter}$${z.divisions.length + 1}`, name);
+  });
+  const typeRange = `'Lists'!$A$2:$A$${PRODUCT_TYPES.length + 1}`;
+  const zoneRange = `'Lists'!$B$2:$B$${RAILWAY_ZONES.length + 1}`;
+  const zoneMap = `'Lists'!$B$2:$C$${RAILWAY_ZONES.length + 1}`;
+
+  // --- Columns ---
+  const widths: Record<string, number> = {
+    "Type of Product": 36,
+    "Zonal Railway": 34,
+    Division: 24,
+    "Nearby Station": 24,
+    "Service Record": 48,
+    "QR Code Number": 20,
+    "ELB Model": 34,
+    Comments: 36,
+    "Public QR Link": 60,
+  };
+  ws.columns = headers.map((h) => ({ header: h, key: h, width: widths[h] ?? 18 }));
+  const col = (h: string) => ws.getColumn(headers.indexOf(h) + 1).letter;
+  const [supply, installation, expiry] = [col("Date of Supply"), col("Date of Installation"), col("Date of Warranty Expiry")];
+
+  const header = ws.getRow(1);
+  header.height = 30;
+  header.eachCell((cell) => {
+    const computed = cell.value === "Date of Warranty Expiry" || cell.value === "Under Warranty?";
+    cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
+    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: computed ? "FF6B7280" : "FF111827" } };
+    cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+  });
+  for (const h of ["Machine No.", "Pedestal No.", "Locking No.", "Control Panel No.", "Version No.", "QR Code Number"]) {
+    if (headers.includes(h)) ws.getColumn(col(h)).numFmt = "@";
+  }
+  for (const h of ["Date of Supply", "Date of Installation", "Date of Commissioning", "Date of Warranty Expiry"]) {
+    ws.getColumn(col(h)).numFmt = DATE_FORMAT;
+  }
+  ws.getColumn(col("Service Record")).alignment = { wrapText: true, vertical: "top" };
+
+  // --- Data rows (export) ---
+  products.forEach((p, i) => {
+    const values = exportRow(p, origin);
+    const row = ws.getRow(i + 2);
+    headers.forEach((h, c) => {
+      const v = values[c];
+      row.getCell(c + 1).value = h.startsWith("Date of") && h !== "Date of Warranty Expiry" ? toExcelDate(v) : v || null;
+    });
+  });
+
+  // --- Formulas, dropdowns and date checks for every usable row ---
+  const range = (h: string) => `${col(h)}2:${col(h)}${lastRow}`;
+  for (let r = 2; r <= lastRow; r++) {
+    const p = products[r - 2];
+    const expiryDate = p ? toExcelDate(p.date_of_warranty_expiry) : null;
+    const cell = ws.getCell(`${expiry}${r}`);
+    cell.value = {
+      formula: `IF(AND(${supply}${r}="",${installation}${r}=""),"",IF(${installation}${r}="",EDATE(${supply}${r},24),IF(${supply}${r}="",EDATE(${installation}${r},12),MIN(EDATE(${supply}${r},24),EDATE(${installation}${r},12)))))`,
+      ...(p ? { result: expiryDate ?? "" } : {}),
+    } as ExcelJS.CellFormulaValue;
+    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF3F4F6" } };
+    if (exporting && p) {
+      ws.getCell(`${col("Under Warranty?")}${r}`).value = {
+        formula: `IF(${expiry}${r}="","",IF(TODAY()<=${expiry}${r},"Yes","No"))`,
+        result: p.under_warranty,
+      } as ExcelJS.CellFormulaValue;
+    }
+  }
+
+  // Range-based validations exist at runtime but are missing from exceljs's type definitions.
+  const validations = (ws as unknown as {
+    dataValidations: { add(range: string, validation: ExcelJS.DataValidation): void };
+  }).dataValidations;
+  const list = (formula: string, title: string, message: string) => ({
+    type: "list" as const,
+    allowBlank: true,
+    formulae: [formula],
+    showErrorMessage: true,
+    errorStyle: "stop" as const,
+    errorTitle: title,
+    error: message,
+  });
+  validations.add(range("Type of Product"), list(typeRange, "Type of Product", "Choose a Type of Product from the list."));
+  validations.add(range("Zonal Railway"), list(zoneRange, "Zonal Railway", "Choose a Zonal Railway from the list."));
+  validations.add(
+    range("Division"),
+    list(
+      `INDIRECT(VLOOKUP($${col("Zonal Railway")}2,${zoneMap},2,FALSE))`,
       "Division",
-      "Station Details",
-      "Type of ELB",
-      "Part Name",
-      "LC Gate No.",
-      "Version No.",
-      "Machine No.",
-      "Pedestal No.",
-      "Locking Number",
-      "Date of Supply",
-      "Date of Installation",
-      "Date of Commissioning",
-      "Date of Warranty Expiry",
-      "Under Warranty?",
-      "Comments",
-      "Public QR Link",
-      "Status",
-    ],
-    ...products.map((p, idx) => [
-      idx + 1,
-      p.sku,
-      p.zone,
-      p.division,
-      p.station_details,
-      p.elb_type,
-      p.part_name,
-      p.lc_gate_no,
-      p.version_no,
-      p.machine_no,
-      p.pedestal_no,
-      p.locking_no,
-      p.date_of_supply,
-      p.date_of_installation,
-      p.date_of_commissioning,
-      p.date_of_warranty_expiry,
-      p.under_warranty,
-      p.comments,
-      `${origin}/p/${p.public_id}`,
-      p.active ? "Active" : "Inactive",
-    ]),
-  ];
-  const ws = xlsx.utils.aoa_to_sheet(wsData);
-  xlsx.utils.book_append_sheet(wb, ws, "Master Sheet");
-  return xlsx.write(wb, { type: "buffer", bookType: "xlsx" });
+      "Choose the Zonal Railway first, then a Division of that zone.",
+    ),
+  );
+  for (const h of ["Date of Supply", "Date of Installation", "Date of Commissioning"]) {
+    validations.add(range(h), {
+      type: "date",
+      operator: "greaterThan",
+      allowBlank: true,
+      formulae: [new Date(Date.UTC(1990, 0, 1))],
+      showErrorMessage: true,
+      errorTitle: h,
+      error: "Enter a valid date, for example 15-01-2025.",
+      showInputMessage: true,
+      promptTitle: h,
+      prompt: "Date as DD-MM-YYYY",
+    });
+  }
+
+  // --- Instructions ---
+  help.getColumn(1).width = 110;
+  [
+    "How to fill the Master Sheet",
+    "",
+    "• QR Code Numbers are generated automatically by the registry (random 16-digit numbers). Do not add them.",
+    "• Choose Type of Product, Zonal Railway and Division from the dropdowns. Pick the Zonal Railway first; the Division list then shows only that zone's divisions.",
+    "• A Complete ELB (any of the five ELB models) creates 5 QR codes: 1 Control Panel Unit, 2 Locking Units and 2 Pedestal Units.",
+    "   For a Complete ELB, enter both Pedestal Numbers in one cell separated by a comma (e.g. PED-01, PED-02), and the same for Locking Numbers.",
+    "• Pedestal Unit, Locking Unit and Control Panel Unit need only their own number.",
+    "• Enter dates as DD-MM-YYYY (e.g. 15-01-2025).",
+    "• Date of Warranty Expiry is calculated: 2 years from the Date of Supply or 1 year from the Date of Installation, whichever is earlier.",
+    "• Service Record: one service entry per line in the cell (press Alt+Enter for a new line), e.g. 15-06-2025 - Annual maintenance done.",
+    "• Every column is optional. Rows whose Machine No. or unit number is already registered are skipped.",
+  ].forEach((line, i) => {
+    const cell = help.getCell(i + 1, 1);
+    cell.value = line;
+    cell.alignment = { wrapText: true };
+    if (i === 0) cell.font = { bold: true, size: 14 };
+  });
+
+  return Buffer.from(await wb.xlsx.writeBuffer());
 }

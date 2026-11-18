@@ -7,6 +7,7 @@ import AramcoHeader from "../../components/AramcoHeader";
 import Footer from "../../components/Footer";
 import { LanguageProvider } from "../../context/LanguageContext";
 import type { Product } from "@/lib/catalog";
+import { displayDate } from "@/lib/railway";
 
 function PublicProductInner({ product }: { product: Product }) {
   const [manualQuery, setManualQuery] = useState("");
@@ -176,7 +177,7 @@ function PublicProductInner({ product }: { product: Product }) {
                     <span className="sm:col-span-2 text-neutral-900 font-semibold">{product.division || "—"}</span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 px-6 py-3.5 text-sm">
-                    <span className="text-neutral-500 font-medium">Station & Yard Details</span>
+                    <span className="text-neutral-500 font-medium">Nearby Station</span>
                     <span className="sm:col-span-2 text-neutral-900 font-semibold">{product.station_details || "—"}</span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 px-6 py-3.5 text-sm">
@@ -196,13 +197,15 @@ function PublicProductInner({ product }: { product: Product }) {
                 </div>
                 <div className="divide-y divide-neutral-100">
                   <div className="grid grid-cols-1 sm:grid-cols-3 px-6 py-3.5 text-sm">
-                    <span className="text-neutral-500 font-medium">Type of ELB</span>
-                    <span className="sm:col-span-2 text-neutral-900 font-semibold">{product.elb_type || "—"}</span>
+                    <span className="text-neutral-500 font-medium">Type of Product</span>
+                    <span className="sm:col-span-2 text-neutral-900 font-semibold">{product.product_type || product.name || "—"}</span>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 px-6 py-3.5 text-sm">
-                    <span className="text-neutral-500 font-medium">Part / Sub-Assembly Name</span>
-                    <span className="sm:col-span-2 text-neutral-900 font-semibold">{product.part_name || "—"}</span>
-                  </div>
+                  {product.elb_type && (
+                    <div className="grid grid-cols-1 sm:grid-cols-3 px-6 py-3.5 text-sm">
+                      <span className="text-neutral-500 font-medium">Part of Complete ELB</span>
+                      <span className="sm:col-span-2 text-neutral-900 font-semibold">{product.elb_type}</span>
+                    </div>
+                  )}
                   <div className="grid grid-cols-1 sm:grid-cols-3 px-6 py-3.5 text-sm">
                     <span className="text-neutral-500 font-medium">Machine Serial Number</span>
                     <span className="sm:col-span-2 font-mono text-neutral-900 font-semibold">{product.machine_no || "—"}</span>
@@ -214,6 +217,10 @@ function PublicProductInner({ product }: { product: Product }) {
                   <div className="grid grid-cols-1 sm:grid-cols-3 px-6 py-3.5 text-sm">
                     <span className="text-neutral-500 font-medium">Locking Mechanism No.</span>
                     <span className="sm:col-span-2 font-mono text-neutral-900 font-semibold">{product.locking_no || "—"}</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 px-6 py-3.5 text-sm">
+                    <span className="text-neutral-500 font-medium">Control Panel No.</span>
+                    <span className="sm:col-span-2 font-mono text-neutral-900 font-semibold">{product.control_panel_no || "—"}</span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 px-6 py-3.5 text-sm">
                     <span className="text-neutral-500 font-medium">Build / Version Number</span>
@@ -230,47 +237,94 @@ function PublicProductInner({ product }: { product: Product }) {
                   </h2>
                   <span className="text-xs font-semibold text-neutral-600">Verification Timeline</span>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="bg-neutral-50 border border-neutral-200/70 rounded-lg p-4">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-neutral-600 block mb-1">
-                      Date of Supply
-                    </span>
-                    <strong className="text-sm sm:text-base font-bold text-neutral-900">
-                      {product.date_of_supply || "—"}
-                    </strong>
-                  </div>
-                  <div className="bg-neutral-50 border border-neutral-200/70 rounded-lg p-4">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-neutral-600 block mb-1">
-                      Date of Installation
-                    </span>
-                    <strong className="text-sm sm:text-base font-bold text-neutral-900">
-                      {product.date_of_installation || "—"}
-                    </strong>
-                  </div>
-                  <div className="bg-neutral-50 border border-neutral-200/70 rounded-lg p-4">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-neutral-600 block mb-1">
-                      Date of Commissioning
-                    </span>
-                    <strong className="text-sm sm:text-base font-bold text-neutral-900">
-                      {product.date_of_commissioning || "—"}
-                    </strong>
-                  </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {[
+                    ["Date of Supply", product.date_of_supply],
+                    ["Date of Installation", product.date_of_installation],
+                    ["Date of Commissioning", product.date_of_commissioning],
+                    ["Warranty Expiry", product.date_of_warranty_expiry],
+                  ].map(([label, value]) => (
+                    <div key={label} className="bg-neutral-50 border border-neutral-200/70 rounded-lg p-4">
+                      <span className="text-xs font-semibold uppercase tracking-wider text-neutral-600 block mb-1">
+                        {label}
+                      </span>
+                      <strong className="text-sm sm:text-base font-bold text-neutral-900">
+                        {displayDate(value) || "—"}
+                      </strong>
+                    </div>
+                  ))}
                 </div>
+                {product.under_warranty && (
+                  <p
+                    className={`mt-4 rounded-lg border px-4 py-3 text-sm font-semibold ${
+                      product.under_warranty === "Yes"
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                        : "border-amber-200 bg-amber-50 text-amber-900"
+                    }`}
+                  >
+                    {product.under_warranty === "Yes"
+                      ? `Under warranty until ${displayDate(product.date_of_warranty_expiry)}.`
+                      : `Warranty expired on ${displayDate(product.date_of_warranty_expiry)}.`}
+                  </p>
+                )}
               </div>
 
-              {/* Remarks & Technical Notes */}
-              {(product.comments || product.description) && (
+              {/* Service Record */}
+              {product.service_records.length > 0 && (
                 <div className="bg-white border border-neutral-200/80 rounded-xl shadow-sm p-6">
                   <h2 className="text-sm font-bold uppercase tracking-wider text-neutral-700 pb-3 border-b border-neutral-100 mb-4">
-                    4. Technical Observations & Remarks
+                    Service Record
                   </h2>
-                  <div className="bg-neutral-50 rounded-lg p-4 border border-neutral-200/70 text-sm text-neutral-700 leading-relaxed space-y-2">
-                    {product.comments && (
-                      <p>
-                        <strong className="text-neutral-900">Field Remarks:</strong> {product.comments}
+                  <ol className="divide-y divide-neutral-100 text-sm">
+                    {product.service_records.map((r, i) => (
+                      <li key={i} className="grid grid-cols-1 sm:grid-cols-4 gap-1 py-3">
+                        <span className="font-semibold text-neutral-900">{displayDate(r.date) || "—"}</span>
+                        <span className="sm:col-span-3 text-neutral-700">{r.details || "—"}</span>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+
+              {/* Remarks & Technical Notes */}
+              {(product.technical_notes.length > 0 || product.description) && (
+                <div className="bg-white border border-neutral-200/80 rounded-xl shadow-sm p-6">
+                  <h2 className="text-sm font-bold uppercase tracking-wider text-neutral-700 pb-3 border-b border-neutral-100 mb-4">
+                    4. Comments / Technical Notes
+                  </h2>
+                  <div className="space-y-3">
+                    {product.technical_notes.map((note, i) => (
+                      <div
+                        key={i}
+                        className="bg-neutral-50 rounded-lg p-4 border border-neutral-200/70 text-sm text-neutral-700 leading-relaxed"
+                      >
+                        {note.date && (
+                          <span className="block text-xs font-semibold uppercase tracking-wider text-neutral-500 mb-1">
+                            {displayDate(note.date)}
+                          </span>
+                        )}
+                        {note.text && <p className="whitespace-pre-line">{note.text}</p>}
+                        {note.images.length > 0 && (
+                          <div className="mt-3 grid grid-cols-3 sm:grid-cols-4 gap-2">
+                            {note.images.map((src, k) => (
+                              <button
+                                type="button"
+                                key={src}
+                                onClick={() => setSelectedImage(src)}
+                                className="relative h-20 sm:h-24 rounded-md overflow-hidden border border-neutral-200 cursor-pointer"
+                              >
+                                <img src={src} alt={`Note ${i + 1} photo ${k + 1}`} className="w-full h-full object-cover" />
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    {product.description && (
+                      <p className="bg-neutral-50 rounded-lg p-4 border border-neutral-200/70 text-sm text-neutral-700">
+                        {product.description}
                       </p>
                     )}
-                    {product.description && <p>{product.description}</p>}
                   </div>
                 </div>
               )}

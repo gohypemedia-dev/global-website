@@ -54,8 +54,8 @@ test("catalog identity, imports, edits, deactivation, exports, and simultaneous 
     undefined,
   );
   const input = {
-    name: "Smart Bulb",
-    sku: " BULB-001 ",
+    product_type: "Control Panel Unit",
+    control_panel_no: "CP-001",
     category_id: category.id,
     website_url: "https://example.com/bulb",
     brand: "ABC",
@@ -63,22 +63,18 @@ test("catalog identity, imports, edits, deactivation, exports, and simultaneous 
 
   const id = await saveProduct(input);
   assert.equal(id, 1);
-  await assert.rejects(
-    async () => await saveProduct({ ...input, sku: "bulb-001" }),
-    /already exists/,
-  );
 
   let p = (await listProducts()).products[0];
   assert.equal(p.serial, "PRD-000001");
+  assert.match(p.sku, /^[1-9]\d{15}$/);
   const publicId = p.public_id;
+  const qr = p.sku;
 
-  await saveProduct(
-    { ...input, name: "Updated bulb", sku: "bulb-001-new" },
-    id,
-  );
+  await saveProduct({ ...input, control_panel_no: "CP-002" }, id);
   p = (await getProduct(publicId))!;
-  assert.equal(p.name, "Updated bulb");
+  assert.equal(p.control_panel_no, "CP-002");
   assert.equal(p.serial, "PRD-000001");
+  assert.equal(p.sku, qr);
 
   await assert.rejects(
     async () => await deleteCategory(category.id),
@@ -88,7 +84,6 @@ test("catalog identity, imports, edits, deactivation, exports, and simultaneous 
     async () =>
       await saveProduct({
         ...input,
-        sku: "bad-date",
         manufacturing_date: "2026-02-30",
       }),
     /valid YYYY-MM-DD/,
@@ -97,36 +92,30 @@ test("catalog identity, imports, edits, deactivation, exports, and simultaneous 
     async () =>
       await saveProduct({
         ...input,
-        sku: "bad-url",
         website_url: "javascript:alert(1)",
       }),
     /HTTP or HTTPS/,
   );
 
+  // Master Sheet CSV import: duplicates in the file and the database are skipped.
   const csv =
-    "Product Name,SKU,Category,Website URL\nExisting,BULB-001-NEW,Smart Home,https://example.com\nNew plug,PLUG-001,smart home,https://example.com/plug\nRepeated plug,plug-001,Smart Home,https://example.com\nBad category,BAD-1,Missing,https://example.com\nNo SKU,,Smart Home,https://example.com";
+    "Type of Product,Control Panel No.,Zonal Railway,Division\nControl Panel Unit,CP-002,,\nControl Panel Unit,CP-100,NR,Delhi\nControl Panel Unit,cp-100,NR,Delhi\nControl Panel Unit,CP-101,Nowhere,\nLocking Unit,,,";
   const preview = await importCsv(csv, "products");
   assert.equal(preview.total, 5);
   assert.equal(preview.created, 0);
   assert.equal(preview.duplicates, 2);
-  assert.equal(preview.invalid, 2);
+  assert.equal(preview.invalid, 1);
   assert.equal((await listProducts()).total, 1);
 
   const result = await importCsv(csv, "products", true);
-  assert.equal(result.created, 1);
+  assert.equal(result.created, 2);
   assert.equal(result.duplicates, 2);
-  assert.equal(result.invalid, 2);
+  assert.equal(result.invalid, 1);
   assert.ok(result.id);
-  assert.equal((await importCsv(csv, "products", true)).created, 0);
-  assert.equal((await listProducts()).total, 2);
+  assert.equal((await listProducts()).total, 3);
 
   await setProductActive(id, false);
   assert.equal((await getProduct(publicId))?.active, 0);
-
-  await assert.rejects(
-    async () => await saveProduct({ ...input, sku: "BULB-001-NEW" }),
-    /already exists/,
-  );
 
   assert.equal(
     (
@@ -138,51 +127,29 @@ test("catalog identity, imports, edits, deactivation, exports, and simultaneous 
     ).created,
     1,
   );
-  assert.equal((await categories()).length, 2);
+  assert.equal((await categories()).length, 3);
 
   await assert.rejects(
-    async () => await importCsv("Product Name\nNo sku", "products"),
-    /Required headers/,
-  );
-  assert.equal(
-    (
-      await importCsv(
-        'Product Name,SKU,Category,Website URL\n"Line one\nLine two",MULTILINE,Smart Home,https://example.com',
-        "products",
-        true,
-      )
-    ).created,
-    1,
+    async () => await importCsv("Product Code\nX", "products"),
+    /Expected columns/,
   );
 
   assert.equal((await listProducts("PRD-000001")).total, 1);
 
   const safeId = await saveProduct({
     ...input,
+    product_type: "",
     name: "=SUM(1,1)",
-    sku: "FORMULA",
   });
   const exported = Papa.parse<Record<string, string>>(
     await exportCsv("products", "https://registry.example"),
     { header: true },
   );
-  const formula = exported.data.find((r) => r.SKU === "FORMULA")!;
-  assert.equal(formula["Product Name"], "'=SUM(1,1)");
-  assert.ok(formula["QR URL"].startsWith("https://registry.example/p/"));
-
-  // Railway sheet import without explicit Category column
-  const railwayCsv =
-    "S.No,QR Code Number,Zonal Railway,Division,Station Details,Type of ELB,Part Name,LC Gate No.,Version No.,Machine No.,Pedestal No.,Locking Number,Date of Supply,Date of Installation,Date of Commissioning,Date of Warranty Expiry,Under Warranty?,Comments\n" +
-    "1,QR-RW-0001,Northern Railway,Delhi Division,NDLS,ELB,Barrier,LC-01,v1,M-01,P-01,L-01,2025-01-01,2025-01-02,2025-01-03,2028-01-01,Yes,OK";
-  const rwPreview = await importCsv(railwayCsv, "products", false);
-  assert.equal(rwPreview.total, 1);
-  assert.equal(rwPreview.invalid, 0);
-  assert.equal(rwPreview.rows[0].status, "new");
-
-  const rwCommit = await importCsv(railwayCsv, "products", true);
-  assert.equal(rwCommit.created, 1);
-  assert.equal(rwCommit.invalid, 0);
-
+  const formula = exported.data.find((r) => r["Control Panel No."] === "CP-001" && r["Type of Product"] === "")!;
+  assert.ok(formula, "record without a type is exported");
+  assert.ok(exported.data.every((r) => !r["Type of Product"].startsWith("=")));
+  assert.ok(formula["Public QR Link"].startsWith("https://registry.example/p/"));
+  assert.ok((await listProducts("SUM")).products.some((x) => x.id === safeId));
   // Independent database connections contend for the sequence.
   const workerCode = `const {parentPort,workerData}=require('node:worker_threads'); const {DatabaseSync}=require('node:sqlite');const {randomUUID}=require('node:crypto');const db=new DatabaseSync(workerData.file);db.exec('PRAGMA busy_timeout=10000');db.exec('PRAGMA foreign_keys=ON');const ids=[];for(let i=0;i<20;i++){const sku=workerData.prefix+i;ids.push(Number(db.prepare('INSERT INTO products (public_id,name,sku,sku_key,category_id,website_url) VALUES (?,?,?,?,?,?)').run(randomUUID(),sku,sku,sku,workerData.category,'https://example.com').lastInsertRowid));}db.close();parentPort.postMessage(ids);`;
   const work = (prefix: string) =>

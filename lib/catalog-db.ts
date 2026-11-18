@@ -83,17 +83,13 @@ export async function ensureDb(): Promise<void> {
           date_of_warranty_expiry TEXT NOT NULL DEFAULT '',
           under_warranty TEXT NOT NULL DEFAULT '',
           comments TEXT NOT NULL DEFAULT '',
+          product_type TEXT NOT NULL DEFAULT '',
+          control_panel_no TEXT NOT NULL DEFAULT '',
+          service_records TEXT NOT NULL DEFAULT '[]',
+          technical_notes TEXT NOT NULL DEFAULT '[]',
           active INTEGER NOT NULL DEFAULT 1,
           created_at TEXT NOT NULL DEFAULT (to_char(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')),
           updated_at TEXT NOT NULL DEFAULT (to_char(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'))
-        )`,
-        `CREATE TABLE IF NOT EXISTS registry_options (
-          id TEXT PRIMARY KEY,
-          category TEXT NOT NULL,
-          label TEXT NOT NULL,
-          value TEXT NOT NULL,
-          parent_value TEXT NOT NULL DEFAULT '',
-          sort_order INTEGER NOT NULL DEFAULT 0
         )`,
         `CREATE TABLE IF NOT EXISTS admins (
           id INTEGER PRIMARY KEY CHECK(id=1),
@@ -126,13 +122,18 @@ export async function ensureDb(): Promise<void> {
         "zone", "division", "station_details", "elb_type", "part_name",
         "lc_gate_no", "version_no", "machine_no", "pedestal_no", "locking_no",
         "date_of_supply", "date_of_installation", "date_of_commissioning",
-        "date_of_warranty_expiry", "under_warranty", "comments"
+        "date_of_warranty_expiry", "under_warranty", "comments",
+        "product_type", "control_panel_no"
       ];
       for (const col of pgColumns) {
         try {
           await neonSql.query(`ALTER TABLE products ADD COLUMN IF NOT EXISTS ${col} TEXT NOT NULL DEFAULT ''`);
         } catch {}
       }
+      try {
+        await neonSql.query("ALTER TABLE products ADD COLUMN IF NOT EXISTS service_records TEXT NOT NULL DEFAULT '[]'");
+        await neonSql.query("ALTER TABLE products ADD COLUMN IF NOT EXISTS technical_notes TEXT NOT NULL DEFAULT '[]'");
+      } catch {}
 
       // Automatically migrate data from SQLite if local sqlite exists and Neon is empty
       const sqliteFile = path.join(dataDir, "catalog.sqlite");
@@ -200,17 +201,12 @@ export async function ensureDb(): Promise<void> {
           locking_no TEXT NOT NULL DEFAULT '', date_of_supply TEXT NOT NULL DEFAULT '', date_of_installation TEXT NOT NULL DEFAULT '',
           date_of_commissioning TEXT NOT NULL DEFAULT '', date_of_warranty_expiry TEXT NOT NULL DEFAULT '',
           under_warranty TEXT NOT NULL DEFAULT '', comments TEXT NOT NULL DEFAULT '',
+          product_type TEXT NOT NULL DEFAULT '', control_panel_no TEXT NOT NULL DEFAULT '',
+          service_records TEXT NOT NULL DEFAULT '[]',
+          technical_notes TEXT NOT NULL DEFAULT '[]',
           active INTEGER NOT NULL DEFAULT 1,
           created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
           updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
-        );
-        CREATE TABLE IF NOT EXISTS registry_options (
-          id TEXT PRIMARY KEY,
-          category TEXT NOT NULL,
-          label TEXT NOT NULL,
-          value TEXT NOT NULL,
-          parent_value TEXT NOT NULL DEFAULT '',
-          sort_order INTEGER NOT NULL DEFAULT 0
         );
         CREATE TABLE IF NOT EXISTS admins (id INTEGER PRIMARY KEY CHECK(id=1), email TEXT NOT NULL, password TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS sessions (token TEXT PRIMARY KEY, expires INTEGER NOT NULL);
@@ -222,13 +218,20 @@ export async function ensureDb(): Promise<void> {
         "zone", "division", "station_details", "elb_type", "part_name",
         "lc_gate_no", "version_no", "machine_no", "pedestal_no", "locking_no",
         "date_of_supply", "date_of_installation", "date_of_commissioning",
-        "date_of_warranty_expiry", "under_warranty", "comments"
+        "date_of_warranty_expiry", "under_warranty", "comments",
+        "product_type", "control_panel_no"
       ];
       for (const col of sqliteCols) {
         try {
           sqliteDb.exec(`ALTER TABLE products ADD COLUMN ${col} TEXT NOT NULL DEFAULT ''`);
         } catch {}
       }
+      try {
+        sqliteDb.exec("ALTER TABLE products ADD COLUMN service_records TEXT NOT NULL DEFAULT '[]'");
+      } catch {}
+      try {
+        sqliteDb.exec("ALTER TABLE products ADD COLUMN technical_notes TEXT NOT NULL DEFAULT '[]'");
+      } catch {}
     }
     await (isPostgres && neonSql
       ? neonSql.query(
