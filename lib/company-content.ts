@@ -1,1 +1,1 @@
-export const MSME_DECLARATION = "[M/s Global Devices (A Unit of Rail Anchor India Pvt Ltd)] is an Udyam-registered [Micro/Small] enterprise (Udyam Reg. No: UDYAM-XX-00-0000000). Please ensure compliance with MSMED Act payment timelines and other clauses as applicable.";
+export const MSME_DECLARATION = "[M/s Global Devices (A Unit of Rail Anchor India Pvt Ltd)] is an Udyam-registered [Micro/Small] enterprise (Udyam Reg. No: UDYAM-HP-10-0000857). Please ensure compliance with MSMED Act payment timelines and other clauses as applicable.";

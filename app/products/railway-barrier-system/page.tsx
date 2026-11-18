@@ -3,7 +3,6 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import AramcoHeader from "../../components/AramcoHeader";
-import NewsletterSection from "../../components/NewsletterSection";
 import Footer from "../../components/Footer";
 import { LanguageProvider, useLanguage } from "../../context/LanguageContext";
 
@@ -844,8 +843,6 @@ function RailwayBarrierContent() {
 
       </div>
 
-      {/* 8. Newsletter Section */}
-      <NewsletterSection />
 
       {/* 9. Footer */}
       <Footer />

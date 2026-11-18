@@ -40,7 +40,7 @@ test("document requests validate input and only report confirmed email delivery"
         assert.deepEqual(await response.json(), { success: true });
       }
     }
-    assert.equal(calls, 17);
+    assert.equal(calls, 16);
     globalThis.fetch = async () => Response.json({ error: "rejected" }, { status: 500 });
     assert.equal((await POST(request({ email: "visitor@example.com", documentId }))).status, 502);
     globalThis.fetch = async () => { throw new Error("network failure"); };

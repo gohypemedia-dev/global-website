@@ -3,7 +3,6 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import AramcoHeader from "./AramcoHeader";
-import NewsletterSection from "./NewsletterSection";
 import Footer from "./Footer";
 import { LanguageProvider, useLanguage } from "../context/LanguageContext";
 
@@ -323,8 +322,6 @@ function SectorsContent({ data }: { data: SectorsSubpageProps }) {
         </section>
       )}
 
-      {/* Newsletter and Official Footer */}
-      <NewsletterSection />
       <Footer />
     </main>
   );

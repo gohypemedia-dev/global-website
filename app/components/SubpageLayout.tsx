@@ -3,7 +3,6 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import AramcoHeader from "./AramcoHeader";
-import NewsletterSection from "./NewsletterSection";
 import Footer from "./Footer";
 import { LanguageProvider, useLanguage } from "../context/LanguageContext";
 
@@ -582,8 +581,6 @@ function SubpageInner({ config }: { config: SubpageConfig }) {
         </div>
       </section>
 
-      {/* 2. Newsletter Subscription */}
-      <NewsletterSection />
 
       {/* 3. Global Footer */}
       <Footer />

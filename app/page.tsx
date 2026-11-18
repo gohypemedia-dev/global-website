@@ -13,7 +13,6 @@ import NewsSection from "./components/NewsSection";
 import FinancialReports from "./components/FinancialReports";
 import OurHistoryVideo from "./components/OurHistoryVideo";
 import AboutUsBanner from "./components/AboutUsBanner";
-import NewsletterSection from "./components/NewsletterSection";
 import Footer from "./components/Footer";
 
 export default function Home() {
@@ -56,8 +55,6 @@ export default function Home() {
         {/* 12. About Us Banner */}
         <AboutUsBanner />
 
-        {/* 13. Newsletter Hub Section */}
-        <NewsletterSection />
 
         {/* 14. Official Footer */}
         <Footer />

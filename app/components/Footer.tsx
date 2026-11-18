@@ -5,6 +5,7 @@ import { CookiePreferencesButton } from "./CookieSettings";
 import { useLanguage } from "../context/LanguageContext";
 import Link from "next/link";
 import { MSME_DECLARATION } from "../../lib/company-content";
+import NewsletterSection from "./NewsletterSection";
 
 const PRODUCTS_LINKS_EN = [
   { name: "Electric Lifting Barrier (ELB)", href: "/products/railway-barrier" },
@@ -55,6 +56,9 @@ export default function Footer() {
   const legalSupportLinks = lang === "hi" ? LEGAL_SUPPORT_LINKS_HI : LEGAL_SUPPORT_LINKS_EN;
 
   return (
+    <>
+    {/* Newsletter sign-up sits at the end of every page, just above the footer. */}
+    <NewsletterSection />
     <footer className="w-full bg-white text-gray-900 pt-16 sm:pt-20 pb-12 border-t border-gray-200 font-sans select-none">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
@@ -70,7 +74,7 @@ export default function Footer() {
             <p className="text-xs sm:text-sm text-gray-600 font-light max-w-2xl mt-2 leading-relaxed">
               {lang === "hi"
                 ? "सुरक्षित रेलवे क्रॉसिंग, ऑनलाइन केबल इन्सुलेशन निगरानी और अन्य महत्वपूर्ण बुनियादी ढांचे के लिए व्यावहारिक समाधानों की इंजीनियरिंग।"
-                : "Engineering practical solutions for safer railway crossings, online cable insulation monitoring and other critical infrastructure"}
+                : <>Engineering practical solutions for safer railway crossings, online cable insulation monitoring<br className="hidden sm:inline" /> and other critical infrastructure</>}
             </p>
           </div>
 
@@ -192,5 +196,6 @@ export default function Footer() {
 
       </div>
     </footer>
+    </>
   );
 }

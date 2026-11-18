@@ -16,15 +16,15 @@ export default function DownloadsPage({ categorySlug }: { categorySlug?: string 
 
   return <InformationPage title={category?.title ?? "Downloads"} wide>
     <nav aria-label="Document categories" className="flex flex-wrap gap-3 text-sm">
-      <Link href="/downloads" className="border px-4 py-2">All Downloads</Link>
+      <Link href="/downloads" aria-current={category ? undefined : "page"} className={`border px-4 py-2 ${category ? "hover:border-red-600" : "border-red-600 bg-red-600 text-white"}`}>All Downloads</Link>
       {DOWNLOAD_CATEGORIES.map((item) => <Link key={item.slug} href={`/downloads/${item.slug}`} aria-current={category?.slug === item.slug ? "page" : undefined} className={`border px-4 py-2 ${category?.slug === item.slug ? "border-red-600 bg-red-600 text-white" : "hover:border-red-600"}`}>{item.title}</Link>)}
     </nav>
-    <p>Select a document and submit your email address. Our team will verify your credentials and email the requested documents manually. Files are not available for direct download.</p>
+    <p>Click on the desired file and you will receive the files on the submitted Email ID.</p>
     {category ? <>
       <section className="space-y-5 bg-neutral-950 p-6 text-white sm:p-10">
         <p className="text-sm font-semibold text-red-400">{category.specification}</p>
-        <h2 className="text-2xl font-semibold sm:text-3xl">{category.headline}</h2>
-        <p className="text-gray-300">{category.description.split("info@indiaglobalgroup.com")[0]}{category.description.includes("info@indiaglobalgroup.com") && <a className="underline" href="mailto:info@indiaglobalgroup.com">info@indiaglobalgroup.com</a>}</p>
+        <h2 className="whitespace-pre-line text-2xl font-semibold sm:text-3xl">{category.headline}</h2>
+        <p className="whitespace-pre-line text-gray-300">{category.description.split("info@indiaglobalgroup.com")[0]}{category.description.includes("info@indiaglobalgroup.com") && <a className="underline" href="mailto:info@indiaglobalgroup.com">info@indiaglobalgroup.com</a>}</p>
         <a href="#document-library" className="inline-block bg-red-600 px-5 py-2 text-white">Request Documents →</a>
       </section>
       {category.warning && <p className="border-l-4 border-amber-500 bg-amber-50 p-5 text-amber-950">{category.warning}</p>}

@@ -37,6 +37,24 @@ body {
   font-family: var(--font-sans);
 }
 
+/*
+ * Site-wide justified body copy: paragraphs and list text fill the full line
+ * width so both edges stay aligned. Kept in the base layer so Tailwind
+ * utilities (text-center, text-left, ...) on an element still win, and text
+ * inside a container that sets its own alignment inherits that instead.
+ */
+@layer base {
+  :where(p, li, dd, address, blockquote, figcaption) {
+    text-align: justify;
+    text-justify: inter-word;
+  }
+
+  :where([class*="text-center"], [class*="text-left"], [class*="text-right"], [class*="text-start"], [class*="text-end"])
+    :where(p, li, dd, address, blockquote, figcaption) {
+    text-align: inherit;
+  }
+}
+
 /* Lenis Smooth Scroll Styles */
 html.lenis,
 html.lenis body {

@@ -20,7 +20,7 @@ export default function ContactPage() {
   const [error, setError] = useState("");
   const [sent, setSent] = useState(false);
   return <LanguageProvider>
-    <AramcoHeader solid />
+    <AramcoHeader />
     <main className="bg-white pt-[105px] text-gray-900 sm:pt-[121px]">
       <section className="relative bg-neutral-950 py-12 text-white sm:py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -28,7 +28,7 @@ export default function ContactPage() {
           <h1 className="max-w-4xl text-4xl font-semibold leading-tight sm:text-5xl">Connect directly with the right department in no time.</h1>
           <p className="my-7 max-w-3xl text-lg leading-8 text-gray-300">Contact us if you are looking to place an order, seeking a career with us, or just need general questions answered.</p>
           <a href="#contact-directory" className="inline-block bg-red-600 px-7 py-3 font-semibold hover:bg-red-700">Connect with us</a>
-          <div className="mt-12 grid grid-cols-2 gap-6 border-t border-white/20 pt-7 text-xl sm:grid-cols-4">{["Sales", "Service", "Payments", "Careers"].map((item) => <span key={item}>{item}</span>)}</div>
+          <div className="mt-12 grid grid-cols-2 gap-6 border-t border-white/15 pt-7 md:grid-cols-4">{["Sales", "Service", "Payments", "Careers"].map((item) => <a key={item} href="#contact-directory" className="border-l border-white/15 pl-4 text-2xl font-light tracking-tight text-white transition-colors first:border-l-0 first:pl-0 hover:text-red-400 sm:pl-6 sm:first:pl-0 sm:text-3xl lg:text-4xl">{item}</a>)}</div>
         </div>
       </section>
       <section id="contact-directory" className="mx-auto max-w-7xl scroll-mt-24 px-4 py-12 sm:scroll-mt-28 sm:px-6 sm:py-16 lg:px-8">
@@ -79,7 +79,7 @@ export default function ContactPage() {
             <h3 className="mb-3 text-lg font-semibold">Global Devices</h3>
             <address className="text-base not-italic leading-7 text-gray-600">Village Ogli, Nahan Road,<br />Kala-amb, Dist. Sirmour,<br />Himachal Pradesh - 173030</address>
             <p className="mt-4 text-sm text-gray-500">Landmark: Near Hotel Black Mango</p>
-            <a href={`https://www.google.com/maps/dir/?api=1&destination=${location}`} target="_blank" rel="noopener noreferrer" className="mt-6 inline-flex items-center gap-3 bg-red-600 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-red-700 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-red-600">Get directions <span aria-hidden="true">&nearr;</span></a>
+            <a href={`https://www.google.com/maps/dir/?api=1&destination=${location}`} target="_blank" rel="noopener noreferrer" className="mt-6 inline-flex items-center gap-3 bg-red-600 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-red-700 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-red-600">Open Google Map <span aria-hidden="true">↗</span></a>
           </div>
           <div className="min-w-0 overflow-hidden rounded-lg border border-gray-200">
             <ConsentMap src={`https://maps.google.com/maps?q=${location}&output=embed`} />

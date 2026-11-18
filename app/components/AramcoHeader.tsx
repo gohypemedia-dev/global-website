@@ -145,12 +145,9 @@ const DRAWER_DATA_HI: Record<string, DrawerCategory> = {
   },
 };
 
-interface AramcoHeaderProps {
-  theme?: "dark" | "light";
-  solid?: boolean;
-}
-
-export default function AramcoHeader({ theme = "dark", solid = false }: AramcoHeaderProps) {
+export default function AramcoHeader() {
+  // The navbar always sits on a solid black background so its white text stays readable on every page.
+  const theme = "dark" as "dark" | "light";
   const { lang, setLang, t } = useLanguage();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeDrawerId, setActiveDrawerId] = useState<string | null>(null);
@@ -250,16 +247,8 @@ export default function AramcoHeader({ theme = "dark", solid = false }: AramcoHe
         =======================================================================
       */}
       <header
-        className={`fixed top-0 left-0 right-0 z-50 w-full transition-all duration-300 font-sans select-none ${
-          theme === "light"
-            ? isScrolled || activeDrawerId
-              ? "bg-white/95 backdrop-blur-md shadow-md text-gray-900 border-b border-gray-200"
-              : "bg-white/95 backdrop-blur-md text-gray-900 border-b border-gray-200/80 shadow-sm"
-            : solid
-              ? "bg-[#111113] text-white border-b border-transparent"
-            : isScrolled || activeDrawerId
-              ? "bg-[#111113]/90 backdrop-blur-md shadow-2xl text-white border-b border-white/10"
-              : "bg-gradient-to-b from-black/75 via-black/25 to-transparent text-white border-b border-transparent"
+        className={`fixed top-0 left-0 right-0 z-50 w-full transition-all duration-300 font-sans select-none bg-black text-white border-b border-white/10 ${
+          isScrolled || activeDrawerId ? "shadow-2xl" : ""
         }`}
       >
         
@@ -373,22 +362,22 @@ export default function AramcoHeader({ theme = "dark", solid = false }: AramcoHe
               </ul>
             </div>
 
-            {/* Right Side: Employee Login + Mobile Hamburger */}
+            {/* Right Side: Scan QR Code + Mobile Hamburger */}
             <div className="flex items-center space-x-3 sm:space-x-5">
-              {/* Employee Login Button (Sharp industrial style with user icon) */}
+              {/* Scan QR Code Button (Sharp industrial style with QR icon) */}
               <a
-                href="/login"
+                href="/scan-qr-code"
                 className={`inline-flex items-center space-x-2 px-4 sm:px-5 py-2 rounded-none text-xs sm:text-sm font-semibold tracking-wide transition-all duration-300 shadow-sm group cursor-pointer ${
                   theme === "light"
                     ? "bg-red-600 hover:bg-[#d62828] text-white border border-red-600 hover:shadow-[0_0_18px_rgba(255,49,49,0.4)]"
                     : "bg-red-600 hover:bg-[#d62828] text-white border border-red-500 hover:shadow-[0_0_18px_rgba(255,49,49,0.6)]"
                 }`}
-                title="Employee Login"
+                title="Scan QR Code"
               >
-                <svg className="w-4 h-4 text-white flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                <svg className="w-4 h-4 text-white flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h2v2h-2zM18 14h2M14 18h2v2M18 18h2v2h-2z" />
                 </svg>
-                <span>{lang === "hi" ? "लॉगिन" : "Login"}</span>
+                <span>{lang === "hi" ? "QR कोड स्कैन करें" : "Scan QR Code"}</span>
               </a>
 
               {/* Mobile Hamburger Menu */}
@@ -551,7 +540,7 @@ export default function AramcoHeader({ theme = "dark", solid = false }: AramcoHe
             {/* Quick Action CTA in Mobile Drawer */}
             <div className="pt-4 mt-2 space-y-2">
               <a
-                href="/login"
+                href="/scan-qr-code"
                 onClick={() => setIsMobileMenuOpen(false)}
                 className={`block w-full py-2.5 rounded-none text-center text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center space-x-2 border ${
                   theme === "light"
@@ -559,10 +548,10 @@ export default function AramcoHeader({ theme = "dark", solid = false }: AramcoHe
                     : "bg-white/10 hover:bg-white/20 border-white/20 text-white"
                 }`}
               >
-                <svg className="w-4 h-4 text-[#ff3131]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                <svg className="w-4 h-4 text-[#ff3131]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h2v2h-2zM18 14h2M14 18h2v2M18 18h2v2h-2z" />
                 </svg>
-                <span>{lang === "hi" ? "कर्मचारी लॉगिन (Login)" : "Employee Login"}</span>
+                <span>{lang === "hi" ? "QR कोड स्कैन करें" : "Scan QR Code"}</span>
               </a>
               <a
                 href="/contact"

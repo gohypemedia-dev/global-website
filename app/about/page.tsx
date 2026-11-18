@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import AramcoHeader from "../components/AramcoHeader";
-import NewsletterSection from "../components/NewsletterSection";
 import Footer from "../components/Footer";
 import AboutFaqs from "../components/AboutFaqs";
 import { LanguageProvider, useLanguage } from "../context/LanguageContext";
@@ -131,7 +130,7 @@ function AboutUsContent() {
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-800 font-sans selection:bg-[#ff3131] selection:text-white relative">
       {/* 1. Header */}
-      <AramcoHeader theme="light" />
+      <AramcoHeader />
 
       {/* 
         =======================================================================
@@ -697,8 +696,6 @@ function AboutUsContent() {
         </div>
       </section>
 
-      {/* 9. Newsletter Section */}
-      <NewsletterSection />
 
       <AboutFaqs />
 

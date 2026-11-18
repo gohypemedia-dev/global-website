@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, Orbitron, Rajdhani } from "next/font/google";
 import "./globals.css";
 import SmoothScroll from "./components/SmoothScroll";
 import CookieSettings from "./components/CookieSettings";
+import { SITE_URL } from "../lib/site";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -26,9 +27,16 @@ const rajdhani = Rajdhani({
   weight: ["400", "500", "600", "700"],
 });
 
+const SITE_TITLE = "Global - Engineering for Railway Safety";
+const SITE_DESCRIPTION =
+  "Making Railway crossings safer with our RDSO Approved Electric Lifting Barriers (ELB) and other ancillary products such as Gearboxes, Locking Mechanisms and GI Booms.";
+
 export const metadata: Metadata = {
-  title: "Global - Engineering for Railway Safety",
-  description: "Making Railway crossings safer with our RDSO Approved Electric Lifting Barriers (ELB) and other ancillary products such as Gearboxes, Locking Mechanisms and GI Booms.",
+  metadataBase: new URL(SITE_URL),
+  title: SITE_TITLE,
+  description: SITE_DESCRIPTION,
+  applicationName: "Global Devices",
+  openGraph: { type: "website", siteName: "Global Devices", title: SITE_TITLE, description: SITE_DESCRIPTION, url: "/" },
 };
 
 export default function RootLayout({
