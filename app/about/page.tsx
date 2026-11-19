@@ -9,7 +9,7 @@ import { LanguageProvider, useLanguage } from "../context/LanguageContext";
 
 function AboutUsContent() {
   const { lang } = useLanguage();
-  const [activeTab, setActiveTab] = useState<"railway" | "eld">("railway");
+  const [activeTab, setActiveTab] = useState<"vision" | "mission">("vision");
   const [currentSlide, setCurrentSlide] = useState(0);
 
   // Top Banner Slides: Auto-changing every 3 seconds
@@ -52,78 +52,71 @@ function AboutUsContent() {
 
   const STATS = [
     {
-      value: "2",
-      label: lang === "hi" ? "प्रमुख उत्पाद क्षेत्र" : "Specialised Product Domains",
-      sub: lang === "hi" ? "रेलवे बैरियर एवं अर्थ लीकेज" : "Railway Barriers & Earth Leakage",
+      value: "10,000+",
+      label: lang === "hi" ? "इलेक्ट्रिक लिफ्टिंग बैरियर स्थापित" : "Electric Lifting Barriers Installed",
+      sub: lang === "hi" ? "भारतीय रेलवे नेटवर्क में" : "Across the Indian Railways network",
     },
     {
-      value: "24/7",
-      label: lang === "hi" ? "सतत सक्रिय निगरानी" : "Continuous Monitoring",
-      sub: lang === "hi" ? "रीयल-टाइम विद्युत सुरक्षा" : "Real-Time Insulation Diagnostics",
+      value: "200+",
+      label: lang === "hi" ? "कर्मचारी" : "Employees",
+      sub: lang === "hi" ? "इन-हाउस ऑन-रोल टीम" : "In-house on-roll team",
     },
     {
-      value: "100%",
-      label: lang === "hi" ? "फेल-सेफ इंजीनियरिंग" : "Fail-Safe Architecture",
-      sub: lang === "hi" ? "कठिन फील्ड परिस्थितियों हेतु" : "Default-to-Safe Mechanism",
+      value: "3+",
+      label: lang === "hi" ? "देशों में सेवा" : "Countries Served",
+      sub: lang === "hi" ? "भारत एवं वैश्विक बाजार" : "India & global markets",
     },
     {
-      value: "DIRECT",
-      label: lang === "hi" ? "प्रत्यक्ष तकनीकी सहयोग" : "Engineering Guidance",
-      sub: lang === "hi" ? "अनुप्रयोग एवं फील्ड समर्थन" : "Dedicated Project Support",
+      value: "20",
+      label: lang === "hi" ? "वर्षों की सेवा" : "Years of Service",
+      sub: lang === "hi" ? "स्था. 2006" : "Estd. 2006",
     },
   ];
 
   const DISCIPLINES = [
     {
-      id: "systems-engineering",
-      name: lang === "hi" ? "सिस्टम डिजाइन एवं स्वचालन" : "Systems & Control Automation",
-      title: lang === "hi" ? "फेल-सेफ रेलवे एवं बैरियर ऑटोमेशन इंजीनियरिंग" : "Fail-Safe Barrier & Signalling Interface Engineering",
-      desc: lang === "hi" ? "रेलवे क्रॉसिंग और उच्च-सुरक्षा क्षेत्रों के लिए यांत्रिक ड्राइव, सेंसर एकीकरण और स्वचालित लॉजिक डिजाइन।" : "Mechanical drive systems, obstacle detection interlocks, and automated control logic for high-traffic corridors.",
-      image: "/images/boom_barrier_hero.jpg",
+      id: "iso",
+      name: "ISO 9001:2015",
+      title: lang === "hi" ? "गुणवत्ता प्रबंधन प्रणाली" : "Quality Management System",
+      desc: lang === "hi" ? "मानकीकृत प्रक्रियाएं, पूर्ण बैच ट्रेसबिलिटी और निरंतर सुधार।" : "Standardized processes, complete batch traceability, and continuous improvement.",
+      image: "/images/eld_engineering_lab.jpg",
     },
     {
-      id: "power-electronics",
-      name: lang === "hi" ? "पावर इलेक्ट्रॉनिक्स एवं सेंसिंग" : "Power Electronics & Sensing",
-      title: lang === "hi" ? "डिजिटल अर्थ लीकेज एवं इंसुलेशन डायग्नोस्टिक्स" : "Earth Leakage & Electrical Diagnostics",
-      desc: lang === "hi" ? "ट्रू RMS करंट मापन, निरंतर इंसुलेशन मॉनिटरिंग और सटीक डिजिटल अलार्म थ्रेसहोल्ड।" : "Precision True RMS leakage detection, real-time insulation resistance tracking, and early fault alerting.",
-      image: "/images/earth_leakage_detector_hero.jpg",
-    },
-    {
-      id: "field-applications",
-      name: lang === "hi" ? "फील्ड अनुप्रयोग एवं एकीकरण" : "Field Application Engineering",
-      title: lang === "hi" ? "कमीशनिंग, रेट्रोफिटिंग एवं ऑन-साइट समर्थन" : "On-Site Commissioning & Retrofit Integration",
-      desc: lang === "hi" ? "मौजूदा औद्योगिक पैनलों और रेलवे इंफ्रास्ट्रक्चर में निर्बाध एकीकरण और ऑन-साइट परीक्षण।" : "Seamless retrofit into existing motor control panels, distribution boards, and rail signaling infrastructure.",
+      id: "zed",
+      name: lang === "hi" ? "MSME सस्टेनेबल (ZED)" : "MSME Sustainable (ZED)",
+      title: lang === "hi" ? "ज़ीरो डिफेक्ट, ज़ीरो इफेक्ट" : "Zero Defect, Zero Effect",
+      desc: lang === "hi" ? "सूक्ष्म, लघु एवं मध्यम उद्यम मंत्रालय, भारत सरकार।" : "Ministry of Micro, Small & Medium Enterprises, Government of India.",
       image: "/images/power_distribution_eld.jpg",
     },
     {
-      id: "quality-validation",
-      name: lang === "hi" ? "गुणवत्ता एवं फील्ड सत्यापन" : "Quality & Environmental Validation",
-      title: lang === "hi" ? "कठोर परीक्षण, थर्मल सत्यापन एवं विश्वसनीयता" : "Environmental Stress & Reliability Compliance",
-      desc: lang === "hi" ? "अत्यधिक तापमान, कंपन और निरंतर चक्रों के तहत प्रत्येक उत्पाद का 100% फैक्ट्री परीक्षण।" : "100% factory bench-tested under thermal variations, continuous mechanical duty cycles, and vibration stress.",
-      image: "/images/crash_barrier_perimeter.jpg",
+      id: "rdso",
+      name: lang === "hi" ? "RDSO अनुमोदित" : "RDSO Approved",
+      title: "RDSO/SPN/208/2012 Ver 2.0",
+      desc: lang === "hi" ? "RDSO विनिर्देश के अनुसार इलेक्ट्रिक लिफ्टिंग बैरियर (ELB) के अनुमोदित निर्माता।" : "Approved manufacturers of Electric Lifting Barrier (ELB) as per RDSO Spec.",
+      image: "/images/boom_barrier_hero.jpg",
     },
   ];
 
   const WORKFLOW_STEPS = [
     {
       step: "01",
-      title: lang === "hi" ? "तकनीकी विश्लेषण एवं विनिर्देश" : "Requirement Analysis & Review",
-      desc: lang === "hi" ? "आपकी परिचालन स्थितियों, स्थापना स्थल, विद्युत लोड और सुरक्षा आवश्यकताओं का विस्तृत मूल्यांकन।" : "Comprehensive technical evaluation of operational conditions, duty cycles, electrical parameters, and site-specific needs.",
+      title: lang === "hi" ? "फेल-सेफ इलेक्ट्रो-मैकेनिकल डिज़ाइन" : "Fail-Safe Electro-Mechanical Design",
+      desc: lang === "hi" ? "सटीक रूप से इंजीनियर किए गए गियरबॉक्स, हाई-टॉर्क मोटर और विश्वसनीय लिमिट-स्विच असेंबली, जो लाखों परेशानी-मुक्त परिचालन चक्रों के लिए इंजीनियर की गई हैं।" : "Precision-engineered gearboxes, high-torque motors, and reliable limit-switch assemblies engineered for hundreds of thousands of trouble-free operating cycles.",
     },
     {
       step: "02",
-      title: lang === "hi" ? "अनुप्रयोग इंजीनियरिंग एवं डिजाइन" : "Application-Specific Engineering",
-      desc: lang === "hi" ? "परियोजना के विनिर्देशों के अनुसार वायरिंग आरेख, नियंत्रण लॉजिक और उपयुक्त हार्डवेयर कॉन्फ़िगरेशन का निर्धारण।" : "Tailoring mechanical boom dimensions, control interface schematics, or leakage alarm thresholds to exact field requirements.",
+      title: lang === "hi" ? "सभी मौसमों में टिकाऊपन" : "All-Weather Durability",
+      desc: lang === "hi" ? "अत्यधिक गर्मी, धूल और मूसलाधार बारिश को सहने के लिए निर्मित जंग-रोधी एनक्लोज़र और हेवी-ड्यूटी काउंटरवेट।" : "Corrosion-resistant enclosures and heavy-duty counterweights built to withstand extreme heat, dust, and torrential rain.",
     },
     {
       step: "03",
-      title: lang === "hi" ? "सटीक निर्माण एवं फैक्ट्री परीक्षण" : "Precision Build & 100% Factory Test",
-      desc: lang === "hi" ? "कड़े गुणवत्ता मानकों के तहत निर्माण, प्रत्येक घटक का तनाव परीक्षण और परिचालन सत्यापन।" : "Rigorous assembly, thermal cycle verification, and simulated fault injection tests before leaving our manufacturing floor.",
+      title: lang === "hi" ? "निर्बाध इंटरलॉकिंग एकीकरण" : "Seamless Interlocking Integration",
+      desc: lang === "hi" ? "रूट रिले इंटरलॉकिंग (RRI), सॉलिड स्टेट इंटरलॉकिंग (SSI) और इलेक्ट्रॉनिक इंटरलॉकिंग (EI) प्रणालियों के साथ पूर्ण संगतता, आपातकालीन बिजली हानि के लिए मैनुअल क्रैंकिंग फेल-सेफ सहित।" : "Full compatibility with Route Relay Interlocking (RRI), Solid State Interlocking (SSI), and Electronic Interlocking (EI) systems, complete with manual cranking fail-safes for emergency power loss.",
     },
     {
       step: "04",
-      title: lang === "hi" ? "कमीशनिंग मार्गदर्शन एवं निरंतर सहयोग" : "Commissioning & Lifecycle Support",
-      desc: lang === "hi" ? "फील्ड इंजीनियरों को प्रत्यक्ष तकनीकी सहायता, दस्तावेजीकरण और दीर्घकालिक परिचालन मार्गदर्शन।" : "Direct engineer-to-engineer technical consultation, comprehensive wiring schematics, and long-term lifecycle reliability.",
+      title: lang === "hi" ? "एंड-टू-एंड निष्पादन" : "End-to-End Execution",
+      desc: lang === "hi" ? "विनिर्माण के अतिरिक्त, हम फैक्ट्री एक्सेप्टेंस टेस्टिंग (FAT), साइट इंस्टॉलेशन पर्यवेक्षण, कमीशनिंग सहायता और असली स्पेयर पार्ट्स की आपूर्ति में सहयोग प्रदान करते हैं।" : "Beyond manufacturing, we provide support with factory acceptance testing (FAT), site installation supervision, commissioning assistance, and genuine spare parts supply.",
     },
   ];
 
@@ -186,22 +179,32 @@ function AboutUsContent() {
               <h1 className="text-3xl sm:text-4xl lg:text-[46px] font-bold tracking-tight leading-[1.18] text-slate-900 mb-5 font-sans">
                 {lang === "hi" ? (
                   <>
-                    विश्वसनीय इंजीनियरिंग। <br />
-                    <span className="text-red-600">सुरक्षित अवसंरचना.</span>
+                    परिचय <br />
+                    <span className="text-red-600">रेलवे की सेवा में 20 वर्ष (स्था. 2006)</span>
                   </>
                 ) : (
                   <>
-                    Engineering Safety & <br />
-                    <span className="text-red-600">Operational Reliability.</span>
+                    Introduction <br />
+                    <span className="text-red-600">20 Years of Service to the Railways (Estd. 2006)</span>
                   </>
                 )}
               </h1>
 
               {/* Narrative Summary */}
+              <p className="text-base sm:text-lg text-slate-600 leading-relaxed max-w-2xl mb-4 font-normal">
+                {lang === "hi"
+                  ? "Global में, हम भारतीय रेलवे नेटवर्क के लिए विशेष रूप से इंजीनियर किए गए हेवी-ड्यूटी इंटरलॉक्ड इलेक्ट्रिक लिफ्टिंग बैरियर (ELB) के डिज़ाइन, निर्माण और कमीशनिंग में विशेषज्ञता रखते हैं। अनुसंधान अभिकल्प एवं मानक संगठन (RDSO) के विनिर्देशों के कड़ाई से अनुपालन में निर्मित, हमारे सिग्नलिंग और लेवल-क्रॉसिंग समाधान मजबूत यांत्रिक विश्वसनीयता और आधुनिक फेल-सेफ ऑटोमेशन के बीच की दूरी को पाटते हैं।"
+                  : "At Global, we specialize in the design, manufacturing, and commissioning of heavy-duty interlocked Electric Lifting Barriers (ELBs) engineered specifically for the Indian Railways network. Built in strict compliance with Research Designs and Standards Organisation (RDSO) specifications, our signaling and level-crossing solutions bridge the gap between rugged mechanical reliability and modern fail-safe automation."}
+              </p>
+              <p className="text-base sm:text-lg text-slate-600 leading-relaxed max-w-2xl mb-4 font-normal">
+                {lang === "hi"
+                  ? "हमारी कंपनी के पास 1 लाख वर्ग फुट से अधिक की विनिर्माण सुविधाएं हैं, जो आधुनिक CNC मशीनिंग सेंटर, सटीक गियर-कटिंग यूनिट, स्वचालित पाउडर-कोटिंग लाइनों और समर्पित इलेक्ट्रिकल असेंबली बे से सुसज्जित हैं।"
+                  : "Our company boasts of over 1 Lakh Square Feet of manufacturing facilities equipped with modern CNC machining centers, precision gear-cutting units, automated powder-coating lines, and dedicated electrical assembly bays."}
+              </p>
               <p className="text-base sm:text-lg text-slate-600 leading-relaxed max-w-2xl mb-8 font-normal">
                 {lang === "hi"
-                  ? "GLOBAL में, हम महत्वपूर्ण परिवहन और औद्योगिक नेटवर्क के लिए समर्पित सुरक्षा समाधान विकसित करते हैं। हमारी विशेषज्ञता दो मुख्य क्षेत्रों पर केंद्रित है: रेलवे बैरियर सिस्टम और डिजिटल अर्थ लीकेज डिटेक्टर — जो कठिन फील्ड परिस्थितियों में शून्य विफलता और निरंतर भरोसेमंद संचालन सुनिश्चित करते हैं।"
-                  : "At GLOBAL, we engineer specialised safety systems for mission-critical infrastructure. Rather than generic catalogues, we focus exclusively on Railway Barrier Systems and Digital Earth Leakage Detectors — built with fail-safe principles to protect human life, eliminate electrical hazards, and ensure uninterrupted operations."}
+                  ? "उच्च-घनत्व वाले माल ढुलाई कॉरिडोर से लेकर दूरस्थ क्षेत्रीय जंक्शनों तक, हम रेलवे ज़ोन, EPC ठेकेदारों और इंफ्रास्ट्रक्चर डेवलपर्स के साथ मिलकर जीवन की रक्षा करने, रेल-सड़क यातायात को सुव्यवस्थित करने और भारत के रेल इंफ्रास्ट्रक्चर का आधुनिकीकरण करने के लिए कार्य करते हैं।"
+                  : "From high-density freight corridors to remote regional junctions, we partner with railway zones, EPC contractors, and infrastructure developers to safeguard lives, streamline rail-road traffic, and modernize India’s rail infrastructure."}
               </p>
 
               {/* Key Highlights Grid */}
@@ -212,10 +215,10 @@ function AboutUsContent() {
                   </div>
                   <div>
                     <div className="text-xs font-bold text-slate-900">
-                      {lang === "hi" ? "रेलवे बैरियर ऑटोमेशन" : "Railway Barrier Automation"}
+                      {lang === "hi" ? "RDSO अनुमोदित निर्माता" : "RDSO Approved Manufacturer"}
                     </div>
                     <div className="text-[11px] text-slate-500">
-                      {lang === "hi" ? "फेल-सेफ बूम एवं सेंसर एकीकरण" : "Fail-safe boom interlocks & obstacle sensors"}
+                      {lang === "hi" ? "इलेक्ट्रिक लिफ्टिंग बैरियर (ELB) - RDSO/SPN/208/2012 Ver 2.0" : "Electric Lifting Barrier (ELB) - RDSO/SPN/208/2012 Ver 2.0"}
                     </div>
                   </div>
                 </div>
@@ -226,10 +229,10 @@ function AboutUsContent() {
                   </div>
                   <div>
                     <div className="text-xs font-bold text-slate-900">
-                      {lang === "hi" ? "डिजिटल अर्थ लीकेज डिटेक्शन" : "Earth Leakage Detection"}
+                      {lang === "hi" ? "ISO 9001:2015 एवं ZED प्रमाणित" : "ISO 9001:2015 & ZED Certified"}
                     </div>
                     <div className="text-[11px] text-slate-500">
-                      {lang === "hi" ? "ट्रू RMS करंट एवं सतत इंसुलेशन सुरक्षा" : "True RMS continuous insulation diagnostics"}
+                      {lang === "hi" ? "MSME सस्टेनेबल (ZED) प्रमाणन, भारत सरकार" : "MSME Sustainable (ZED) Certification, Government of India"}
                     </div>
                   </div>
                 </div>
@@ -267,12 +270,12 @@ function AboutUsContent() {
                 </div>
                 <div className="p-3 bg-white border-t border-slate-100">
                   <span className="text-xs text-red-600 font-bold uppercase tracking-wider block font-mono">
-                    {lang === "hi" ? "मिशन-क्रिटिकल इंफ्रास्ट्रक्चर" : "Mission-Critical Infrastructure"}
+                    {lang === "hi" ? "रेलवे की सेवा में 20 वर्ष" : "20 Years of Service to the Railways"}
                   </span>
                   <span className="text-xs text-slate-600">
                     {lang === "hi"
-                      ? "24/7 लेवल क्रॉसिंग एवं पावर पैनल सुरक्षा प्रणालियां"
-                      : "24/7 level crossing & power distribution protection systems"}
+                      ? "स्था. 2006 - काला-अंब औद्योगिक क्षेत्र, हिमाचल प्रदेश"
+                      : "Estd. 2006 - Kala-amb Industrial Area, Himachal Pradesh"}
                   </span>
                 </div>
               </div>
@@ -368,37 +371,25 @@ function AboutUsContent() {
               <h2 className="text-2xl xs:text-3xl sm:text-4xl font-bold text-slate-900 tracking-tight leading-[1.18] font-sans">
                 {lang === "hi" ? (
                   <>
-                    परिशुद्ध विनिर्माण एवं <br />
-                    <span className="text-red-600">
-                      फील्ड इंजीनियरिंग का दीर्घकालिक अनुभव
-                    </span>
+                    हमारी <span className="text-red-600">कहानी</span>
                   </>
                 ) : (
                   <>
-                    Decades Of Precision Manufacturing & <br />
-                    <span className="text-red-600">
-                      Engineering Experience
-                    </span>
+                    Our <span className="text-red-600">Story</span>
                   </>
                 )}
               </h2>
 
               <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
                 {lang === "hi"
-                  ? "GLOBAL अपनी प्रमाणित इंजीनियरिंग विशेषज्ञता के आधार पर भारत और वैश्विक बाजारों में सभी प्रमुख सिस्टम इंटीग्रेटर्स, रेलवे डिवीजनों और औद्योगिक प्रतिष्ठानों को उच्च-विश्वसनीयता रेलवे बैरियर प्रणालियों और डिजिटल अर्थ लीकेज डिटेक्शन मशीनों का विनिर्माण और आपूर्ति करता है।"
-                  : "GLOBAL manufactures and supplies high-reliability Railway Barrier Systems and Digital Earth Leakage Detection Machines based on proven engineering expertise to leading major system integrators, railway divisions, and industrial operators across India and global markets."}
+                  ? "2006 में हिमाचल प्रदेश के काला-अंब औद्योगिक क्षेत्र में स्थापित, Global Devices ने एक स्पष्ट उद्देश्य के साथ शुरुआत की: स्वदेशी, उच्च-परिशुद्धता इंजीनियरिंग के माध्यम से पुराने, मैन्युअल रूप से संचालित लेवल क्रॉसिंग की कमज़ोरियों को समाप्त करना। भारतीय रेल नेटवर्क की कठिन पर्यावरणीय और परिचालन वास्तविकताओं—अत्यधिक मानसूनी नमी से लेकर 24/7 भारी-चक्र संचालन तक—को समझते हुए, हमारी टीम ने ऐसे लिफ्टिंग बैरियर बनाने का लक्ष्य रखा जिन्हें न्यूनतम रखरखाव की आवश्यकता हो और जो बिना किसी समझौते के सुरक्षा प्रदान करें।"
+                  : "Founded in 2006 in the Kala-amb Industrial Area of Himachal Pradesh , Global Devices began with a clear objective: to eliminate the vulnerabilities of aging, manually operated level crossings through indigenous, high-precision engineering. Recognizing the demanding environmental and operational realities of the Indian rail network—ranging from extreme monsoon humidity to 24/7 heavy-cycle operations—our team set out to build lifting barriers that require minimal maintenance while delivering uncompromising safety."}
               </p>
 
               <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
                 {lang === "hi"
-                  ? "हमारी विनिर्माण इकाइयों से निकलने वाली प्रत्येक सुरक्षा प्रणाली को सटीक इंजीनियरिंग के साथ डिजाइन किया जाता है, कड़े मानकों के अनुसार निर्मित किया जाता है और कठोर थर्मल व यांत्रिक तनाव परीक्षणों पर परखा जाता है। GLOBAL सुरक्षा प्रणालियों की निर्माण गुणवत्ता और विश्वसनीयता हमारे भागीदारों को अद्वितीय मूल्य प्रदान करती है।"
-                  : "Every safety system that leaves our factories has been designed with precision, manufactured to standards, and subjected to rigorous thermal and mechanical stress testing. The build quality and reliability of GLOBAL safety systems provides tremendous value to our partners and clients."}
-              </p>
-
-              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                {lang === "hi"
-                  ? "GLOBAL अनुबंध विनिर्माण (Contract Manufacturing) और OEM/ODM सेवाओं के माध्यम से रेलवे ऑटोमेशन बूम बैरियर्स, सिग्नलिंग इंटरफेस, डिजिटल अर्थ लीकेज डिटेक्टर (True RMS) और इंडस्ट्रियल पावर प्रोटेक्शन सिस्टम्स के लिए डिजाइन और ब्रांड अनुकूलन प्रदान करता है।"
-                  : "GLOBAL provides design and brand customization through contract manufacturing and OEM/ODM services for mission-critical systems such as Railway Boom Barriers, Level Crossing Signaling Interlocks, Digital Earth Leakage Detectors (True RMS), and Industrial Power Distribution Protection."}
+                  ? "पिछले 20 वर्षों में, हम एक विशेष फैब्रिकेशन यूनिट से बढ़कर एक विश्वसनीय रेलवे उपकरण निर्माता बन गए हैं। हमारे द्वारा निर्मित प्रत्येक बैरियर मैकेनिज़्म, कंट्रोल कंसोल और बूम असेंबली दशकों की धातुकर्म विशेषज्ञता, कठोर फील्ड परीक्षण और मेक इन इंडिया पहल के प्रति गहरी प्रतिबद्धता को दर्शाती है।"
+                  : <>Over the past 20 years, we have grown from a specialized fabrication unit into a trusted railway equipment manufacturer. Every barrier mechanism, control console, and boom assembly we produce reflects decades of metallurgical expertise, rigorous field testing, and a deep commitment to the <em>Make in India</em> initiative.</>}
               </p>
             </div>
 
@@ -417,56 +408,56 @@ function AboutUsContent() {
           <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 sm:mb-16">
             <div>
               <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 font-sans">
-                {lang === "hi" ? "हमारा उत्पाद फोकस" : "Focused Exclusively on Two Domains"}
+                {lang === "hi" ? "हमारा विज़न और मिशन" : "Our Vision and Mission"}
               </h2>
             </div>
 
-            {/* Domain Switcher Tabs */}
+            {/* Vision / Mission Switcher Tabs */}
             <div className="flex items-center space-x-2 mt-6 md:mt-0 p-1 bg-white border border-slate-300">
               <button
                 type="button"
-                onClick={() => setActiveTab("railway")}
+                onClick={() => setActiveTab("vision")}
                 className={`px-5 py-2 text-xs sm:text-sm font-bold transition-all cursor-pointer ${
-                  activeTab === "railway"
+                  activeTab === "vision"
                     ? "bg-red-600 text-white shadow-xs"
                     : "text-slate-600 hover:text-slate-900"
                 }`}
               >
-                {lang === "hi" ? "रेलवे बैरियर सिस्टम" : "Railway Barriers"}
+                {lang === "hi" ? "हमारा विज़न" : "Our Vision"}
               </button>
               <button
                 type="button"
-                onClick={() => setActiveTab("eld")}
+                onClick={() => setActiveTab("mission")}
                 className={`px-5 py-2 text-xs sm:text-sm font-bold transition-all cursor-pointer ${
-                  activeTab === "eld"
+                  activeTab === "mission"
                     ? "bg-red-600 text-white shadow-xs"
                     : "text-slate-600 hover:text-slate-900"
                 }`}
               >
-                {lang === "hi" ? "अर्थ लीकेज डिटेक्टर" : "Earth Leakage"}
+                {lang === "hi" ? "हमारा मिशन" : "Our Mission"}
               </button>
             </div>
           </div>
 
-          {/* Tab 1: Railway Barrier Content */}
-          {activeTab === "railway" && (
+          {/* Tab 1: Vision */}
+          {activeTab === "vision" && (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center animate-in fade-in duration-300">
               <div className="lg:col-span-6 space-y-6">
                 <h3 className="text-2xl sm:text-3xl font-bold text-slate-900 font-sans leading-tight">
-                  {lang === "hi" ? "रेलवे बैरियर एवं स्वचालित बूम सिस्टम" : "Railway Barrier Systems"}
+                  {lang === "hi" ? "हमारा विज़न" : "Our Vision"}
                 </h3>
                 <p className="text-sm sm:text-base text-slate-600 leading-relaxed font-normal">
                   {lang === "hi"
-                    ? "ग्लोबल रेलवे बैरियर सिस्टम रेलवे लेवल क्रॉसिंग और प्रतिबंधित क्षेत्रों में सड़क यातायात को सुरक्षित रूप से नियंत्रित करने के लिए डिज़ाइन किए गए हैं। मजबूत यांत्रिक निर्माण और डिफ़ॉल्ट-टू-सेफ नियंत्रण वास्तुकला कठिन पर्यावरणीय परिस्थितियों में भी निरंतर कार्यक्षमता प्रदान करती है।"
-                    : "GLOBAL Railway Barrier Systems are engineered for heavy-duty traffic control at railway level crossings and restricted industrial access points. Combining robust electromechanical drive units with fail-safe control logic, they deliver reliable and continuous perimeter protection."}
+                    ? "स्वदेशी नवाचार और इंजीनियरिंग उत्कृष्टता के माध्यम से शून्य-दुर्घटना रेल-सड़क चौराहों को साकार करते हुए, रेलवे लेवल-क्रॉसिंग ऑटोमेशन में भारत का सबसे विश्वसनीय मानदंड बनना।"
+                    : "To be India’s most trusted benchmark in railway level-crossing automation, driving zero-accident rail-road intersections through indigenous innovation and engineering excellence."}
                 </p>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
                   {[
-                    { en: "Electromechanical Drive Unit", hi: "इलेक्ट्रोमैकेनिकल ड्राइव यूनिट" },
-                    { en: "Weatherproof Enclosure", hi: "वेदरप्रूफ औद्योगिक एनक्लोजर" },
-                    { en: "Obstacle Detection Ready", hi: "ऑब्स्टेकल डिटेक्शन इंटरफेस" },
-                    { en: "Manual Override & Battery Backup", hi: "मैनुअल ओवरराइड एवं बैकअप" },
+                    { en: "State of the art Manufacturing", hi: "अत्याधुनिक विनिर्माण" },
+                    { en: "Innovative Solutions", hi: "नवोन्मेषी समाधान" },
+                    { en: "Quality Assurance", hi: "गुणवत्ता आश्वासन" },
+                    { en: "Commitment to Safety", hi: "सुरक्षा के प्रति प्रतिबद्धता" },
                   ].map((f, idx) => (
                     <div key={idx} className="p-3.5 bg-white border border-slate-200 text-xs sm:text-sm text-slate-700 flex items-center space-x-2.5">
                       <span className="text-red-600 font-bold text-xs">✓</span>
@@ -480,7 +471,7 @@ function AboutUsContent() {
                     href="/products/railway-barrier-system"
                     className="inline-flex items-center space-x-2 text-xs sm:text-sm font-bold text-red-600 hover:text-red-700 transition-colors cursor-pointer group"
                   >
-                    <span>{lang === "hi" ? "रेलवे बैरियर उत्पाद विनिर्देश देखें" : "View Railway Barrier Specifications"}</span>
+                    <span>{lang === "hi" ? "इलेक्ट्रिक लिफ्टिंग बैरियर देखें" : "View Electric Lifting Barriers"}</span>
                     <span className="transition-transform group-hover:translate-x-1">→</span>
                   </Link>
                 </div>
@@ -492,7 +483,7 @@ function AboutUsContent() {
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src="/images/boom_barrier_hero.jpg"
-                      alt="Railway Barrier System"
+                      alt="Electric Lifting Barrier"
                       className="w-full h-full object-cover"
                     />
                   </div>
@@ -501,25 +492,28 @@ function AboutUsContent() {
             </div>
           )}
 
-          {/* Tab 2: Earth Leakage Detector Content */}
-          {activeTab === "eld" && (
+          {/* Tab 2: Mission */}
+          {activeTab === "mission" && (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center animate-in fade-in duration-300">
               <div className="lg:col-span-6 space-y-6">
                 <h3 className="text-2xl sm:text-3xl font-bold text-slate-900 font-sans leading-tight">
-                  {lang === "hi" ? "डिजिटल अर्थ लीकेज डिटेक्टर" : "Digital Earth Leakage Detectors"}
+                  {lang === "hi" ? "हमारा मिशन" : "Our Mission"}
                 </h3>
-                <p className="text-sm sm:text-base text-slate-600 leading-relaxed font-normal">
-                  {lang === "hi"
-                    ? "ग्लोबल डिजिटल अर्थ लीकेज डिटेक्टर विद्युत प्रणालियों में अनचाहे अर्थ लीकेज करंट की निरंतर निगरानी करते हैं। स्पष्ट डिजिटल डिस्प्ले ऑपरेटरों को असामान्य स्थितियों की तुरंत पहचान करने में मदद करता है, जिससे विद्युत आग और उपकरण विफलता का जोखिम समाप्त होता है।"
-                    : "GLOBAL Digital Earth Leakage Detectors continuously monitor electrical distribution networks for unwanted leakage current to earth. Clear digital displays and adjustable trip thresholds help maintenance teams catch insulation degradation before it leads to electrical failure."}
-                </p>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                <div className="grid grid-cols-1 gap-3 pt-2">
                   {[
-                    { en: "True RMS Current Sensing", hi: "ट्रू RMS करंट मापन" },
-                    { en: "High-Contrast Digital Display", hi: "हाई-कंट्रास्ट डिजिटल डिस्प्ले" },
-                    { en: "Adjustable Alarm Thresholds", hi: "एडजस्टेबल अलार्म थ्रेसहोल्ड" },
-                    { en: "Standard Panel Mount Form", hi: "मानक पैनल माउंटिंग फॉर्म" },
+                    {
+                      en: "To manufacture robust, 100% RDSO-compliant Electric Lifting Barriers that perform reliably under the harshest climatic and operational conditions.",
+                      hi: "मजबूत, 100% RDSO-अनुपालक इलेक्ट्रिक लिफ्टिंग बैरियर का निर्माण करना जो सबसे कठोर जलवायु और परिचालन परिस्थितियों में भी विश्वसनीय रूप से कार्य करें।",
+                    },
+                    {
+                      en: "To continually refine fail-safe electro-mechanical designs that reduce lifecycle maintenance costs for Indian Railways.",
+                      hi: "फेल-सेफ इलेक्ट्रो-मैकेनिकल डिज़ाइनों को निरंतर परिष्कृत करना जो भारतीय रेलवे के लिए जीवनचक्र रखरखाव लागत को कम करें।",
+                    },
+                    {
+                      en: "To uphold uncompromising quality assurance, ethical business practices, and on-time project delivery for every public and private sector partner.",
+                      hi: "प्रत्येक सार्वजनिक और निजी क्षेत्र के भागीदार के लिए बिना समझौते के गुणवत्ता आश्वासन, नैतिक व्यावसायिक प्रथाओं और समय पर परियोजना डिलीवरी को बनाए रखना।",
+                    },
                   ].map((f, idx) => (
                     <div key={idx} className="p-3.5 bg-white border border-slate-200 text-xs sm:text-sm text-slate-700 flex items-center space-x-2.5">
                       <span className="text-red-600 font-bold text-xs">✓</span>
@@ -530,10 +524,10 @@ function AboutUsContent() {
 
                 <div className="pt-4">
                   <Link
-                    href="/products/earth-leakage-detector"
+                    href="/products/railway-barrier-system"
                     className="inline-flex items-center space-x-2 text-xs sm:text-sm font-bold text-red-600 hover:text-red-700 transition-colors cursor-pointer group"
                   >
-                    <span>{lang === "hi" ? "अर्थ लीकेज डिटेक्टर विनिर्देश देखें" : "View Earth Leakage Detector Specifications"}</span>
+                    <span>{lang === "hi" ? "इलेक्ट्रिक लिफ्टिंग बैरियर देखें" : "View Electric Lifting Barriers"}</span>
                     <span className="transition-transform group-hover:translate-x-1">→</span>
                   </Link>
                 </div>
@@ -544,8 +538,8 @@ function AboutUsContent() {
                   <div className="w-full h-[320px] sm:h-[420px] overflow-hidden bg-slate-100 border border-slate-200">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src="/images/earth_leakage_detector_hero.jpg"
-                      alt="Digital Earth Leakage Detector"
+                      src="/images/boom_barrier_railway.jpg"
+                      alt="Railway Level Crossing Barrier"
                       className="w-full h-full object-cover"
                     />
                   </div>
@@ -567,12 +561,12 @@ function AboutUsContent() {
 
           <div className="text-center max-w-3xl mx-auto mb-14 sm:mb-20">
             <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 font-sans leading-tight">
-              {lang === "hi" ? "हमारी डिलीवरी प्रक्रिया" : "How We Deliver Solutions"}
+              {lang === "hi" ? "मुख्य क्षमताएं एवं RDSO अनुपालन" : "Core Capabilities and RDSO Compliance"}
             </h2>
             <p className="text-sm sm:text-base text-slate-600 mt-3 font-normal">
               {lang === "hi"
-                ? "प्रारंभिक परियोजना मूल्यांकन से लेकर अंतिम कमीशनिंग तक हमारा पारदर्शी और अनुशासित इंजीनियरिंग दृष्टिकोण।"
-                : "A disciplined, engineer-guided process ensuring every deployment matches strict technical standards."}
+                ? "रेलवे सिग्नलिंग में त्रुटि की कोई गुंजाइश नहीं होती। हमारी विनिर्माण प्रक्रियाएं और उत्पाद संरचनाएं नवीनतम RDSO तकनीकी विनिर्देशों और संबंधित संशोधनों के अनुरूप हैं, ताकि मौजूदा इंटरलॉकिंग और ब्लॉक-वर्किंग प्रणालियों के साथ निर्बाध एकीकरण सुनिश्चित हो सके।"
+                : "Railway signaling leaves zero margin for error. Our manufacturing processes and product architectures are aligned with the latest RDSO technical specifications and relevant amendments to ensure seamless integration with existing interlocking and block-working systems."}
             </p>
           </div>
 
@@ -611,19 +605,24 @@ function AboutUsContent() {
           <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-12 sm:mb-16">
             <div>
               <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 font-sans">
-                {lang === "hi" ? "विशेषज्ञ इंजीनियरिंग विभाग" : "Specialised Engineering Capabilities"}
+                {lang === "hi" ? "प्रमाणित उत्कृष्टता: ISO 9001 एवं ZED मानक" : "Certified Excellence: ISO 9001 & ZED Standards"}
               </h2>
+              <p className="text-sm sm:text-base text-slate-600 mt-3 font-normal max-w-3xl leading-relaxed">
+                {lang === "hi"
+                  ? "गुणवत्ता और स्थिरता हमारी शॉप-फ्लोर संस्कृति में समाहित हैं। Global Devices कड़ाई से ऑडिट की गई ISO 9001:2015 गुणवत्ता प्रबंधन प्रणाली के अंतर्गत कार्य करता है, जो डिज़ाइन, फैब्रिकेशन और असेंबली के प्रत्येक चरण में मानकीकृत प्रक्रियाएं, पूर्ण बैच ट्रेसबिलिटी और निरंतर सुधार सुनिश्चित करती है। इसके अतिरिक्त, हमें भारत सरकार के सूक्ष्म, लघु एवं मध्यम उद्यम मंत्रालय से MSME सस्टेनेबल (ZED) प्रमाणन प्राप्त होने पर गर्व है। ज़ीरो डिफेक्ट, ज़ीरो इफेक्ट सिद्धांतों का पालन करते हुए, हम सुनिश्चित करते हैं कि हमारी सुविधा से निकलने वाला प्रत्येक इलेक्ट्रिक लिफ्टिंग बैरियर बिना समझौते के विश्वसनीयता मानकों को पूरा करे, साथ ही संसाधन-कुशल, स्वच्छ विनिर्माण प्रथाओं के माध्यम से हमारे पर्यावरणीय प्रभाव को न्यूनतम रखे।"
+                  : <>Quality and sustainability are embedded into our shop-floor culture. <strong>Global Devices</strong> operates under a strictly audited <strong>ISO 9001:2015</strong> Quality Management System, ensuring standardized processes, complete batch traceability, and continuous improvement across every stage of design, fabrication, and assembly. Furthermore, we are proud to hold the <strong>MSME Sustainable (ZED) Certification</strong> from the Ministry of Micro, Small &amp; Medium Enterprises, Government of India. By adhering to <em>Zero Defect, Zero Effect</em> principles, we guarantee that every Electric Lifting Barrier leaving our facility meets uncompromising reliability benchmarks while minimizing our environmental footprint through resource-efficient, clean manufacturing practices.</>}
+              </p>
             </div>
 
             <Link
               href="/contact"
               className="mt-6 sm:mt-0 inline-flex items-center px-6 py-3 bg-red-600 hover:bg-red-700 text-white text-xs sm:text-sm font-semibold tracking-wide transition-all shadow-md shadow-red-600/20 self-start sm:self-auto cursor-pointer"
             >
-              {lang === "hi" ? "इंजीनियरिंग से संपर्क करें" : "Consult Our Team"}
+              {lang === "hi" ? "संपर्क करें" : "Contact Us"}
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
             {DISCIPLINES.map((d) => (
               <div
                 key={d.id}
@@ -668,14 +667,14 @@ function AboutUsContent() {
 
           <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 leading-tight mb-5 font-sans">
             {lang === "hi"
-              ? "क्या आपको आगामी बुनियादी ढांचा परियोजना के लिए तकनीकी सहायता की आवश्यकता है?"
-              : "Need Technical Assistance for an Infrastructure Project?"}
+              ? "आइए मिलकर सुरक्षित इंफ्रास्ट्रक्चर बनाएं"
+              : "Let’s Build Safer Infrastructure Together"}
           </h2>
 
           <p className="text-sm sm:text-base text-slate-600 leading-relaxed max-w-2xl mx-auto mb-8 font-normal">
             {lang === "hi"
-              ? "अपनी स्थापना, परिचालन स्थितियों, नियंत्रण एकीकरण और तकनीकी विनिर्देशों के बारे में हमारी इंजीनियरिंग टीम से सीधे बात करें।"
-              : "Discuss installation parameters, environmental conditions, control interface integration, and customized wiring diagrams directly with our engineering team."}
+              ? "चाहे आप टर्नकी रेलवे विद्युतीकरण परियोजना निष्पादित कर रहे हों, मानवयुक्त लेवल क्रॉसिंग को अपग्रेड कर रहे हों, या RDSO-अनुपालक सिग्नलिंग हार्डवेयर की खरीद कर रहे हों, हमारी इंजीनियरिंग टीम तकनीकी डेटाशीट और परियोजना कोटेशन में सहायता के लिए तैयार है।"
+              : "Whether you are executing a turnkey railway electrification project, upgrading manned level crossings, or sourcing RDSO-compliant signaling hardware, our engineering team is ready to assist with technical datasheets and project quotes."}
           </p>
 
           <div className="flex flex-col xs:flex-row items-center justify-center gap-4">
@@ -683,7 +682,7 @@ function AboutUsContent() {
               href="/contact"
               className="w-full xs:w-auto px-8 py-4 bg-red-600 hover:bg-red-700 text-white font-semibold text-center text-xs sm:text-sm tracking-wide transition-all shadow-md shadow-red-600/20 cursor-pointer"
             >
-              {lang === "hi" ? "कोटेशन का अनुरोध करें" : "Request a Technical Quote"}
+              {lang === "hi" ? "संपर्क करें" : "Contact Us"}
             </Link>
             <Link
               href="/contact/engineering-team"
