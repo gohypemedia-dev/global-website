@@ -154,7 +154,7 @@ test("registry: random QR numbers, Complete ELB sets, validation and Excel round
     product_type: "ELB 110 V AC",
     machine_no: "MCH-1",
     pedestal_no: "PED-1, PED-2",
-    locking_no: "LCK-1 / LCK-2",
+    locking_no: "LCK-1; LCK-2",
     control_panel_no: "CP-1",
     zone: "South Coast Railway (SCoR)",
     division: "Guntur",
@@ -184,6 +184,26 @@ test("registry: random QR numbers, Complete ELB sets, validation and Excel round
     createProducts({ product_type: "ELB 110 V AC", pedestal_no: "A, B, C" }),
     /at most two Pedestal Numbers/,
   );
+
+  // Unit numbers that contain "/" (the client's format) are not split on it.
+  const slashIds = await createProducts({
+    product_type: "ELB 110 V AC",
+    machine_no: "GD/HLB/1126/001",
+    pedestal_no: "GD/HLB-PD/1126/001 , GD/HLB-PD/1126/002",
+    locking_no: "GD/HLB-UL/1126/001 , GD/HLB-UL/1126/002",
+    control_panel_no: "GD/HLB-CP/1126/001",
+  });
+  assert.equal(slashIds.length, 5);
+  const slashSet = (await listProducts("GD/HLB/1126/001")).products;
+  assert.deepEqual(slashSet.map((p) => p.pedestal_no).filter(Boolean).sort(), [
+    "GD/HLB-PD/1126/001",
+    "GD/HLB-PD/1126/002",
+  ]);
+  assert.deepEqual(slashSet.map((p) => p.locking_no).filter(Boolean).sort(), [
+    "GD/HLB-UL/1126/001",
+    "GD/HLB-UL/1126/002",
+  ]);
+  assert.equal(slashSet.find((p) => p.control_panel_no)?.control_panel_no, "GD/HLB-CP/1126/001");
   await assert.rejects(saveProduct({ product_type: "ELB 110 V AC" }, unitId), /only be added as a new entry/);
 
   // The template has dropdowns and no data rows.

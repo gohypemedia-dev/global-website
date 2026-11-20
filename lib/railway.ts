@@ -166,10 +166,14 @@ export function activeNumberFields(type: string): UnitNumberField[] {
   return ["machine_no", "pedestal_no", "locking_no", "control_panel_no"];
 }
 
-/** Splits "PED-01, PED-02" (or "/", ";", "&", new line) into the individual unit numbers. */
+/**
+ * Splits "PED-01, PED-02" into the individual unit numbers. Only a comma, semicolon
+ * or new line separates numbers: "/" and "&" are common inside numbers such as
+ * "GD/HLB-PD/1126/001", so they are never treated as separators.
+ */
 export function splitUnitNumbers(value: string): string[] {
   return String(value || "")
-    .split(/[,;/&\n]/)
+    .split(/[,;\n]/)
     .map((v) => v.trim())
     .filter(Boolean);
 }
